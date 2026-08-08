@@ -3,13 +3,13 @@ from sqlalchemy import create_engine, text
 import os
 import sys 
 
-BASE_DATA_PATH = r""
+BASE_DATA_PATH = "data"
 
 DB_HOST = "localhost"
 DB_PORT = "5432"
 DB_NAME = "db_dwh"  
-DB_USER = ""
-DB_PASS = ""
+DB_USER = "postgres"
+DB_PASS = "growtopia123"
 
 AIRPORTS_FILE = os.path.join(BASE_DATA_PATH, "airports.csv")
 FLIGHTS_FILE = os.path.join(BASE_DATA_PATH, "flights.csv")

@@ -5,8 +5,8 @@ import os
 DB_HOST = "localhost"
 DB_PORT = "5432"
 DB_NAME = "db_oltp"
-DB_USER = "" 
-DB_PASS = ""
+DB_USER = "postgres" 
+DB_PASS = "growtopia123"
 
 BRONZE_PATH = os.path.join("data", "bronze")
 os.makedirs(BRONZE_PATH, exist_ok=True)
