@@ -1,10 +1,10 @@
-# TravelNusantara: End-to-End Flight ETL & Neuro-Symbolic AI Data Analyst
+# TravelNusantara: End-to-End Flight ETL & Local AI Data Analyst
 
-This repository implements a Data Warehouse and Neuro-Symbolic AI Analytics engine for **TravelNusantara**, a fictional Online Travel Agency (OTA).
+This repository implements a Data Warehouse and Local AI Analytics engine for **TravelNusantara**, a fictional Online Travel Agency (OTA).
 
-The system combines a Kimball Star Schema data warehouse (Medallion Architecture) with a dual-mode Neuro-Symbolic agent:
+The system combines a Kimball Star Schema data warehouse (Medallion Architecture) with a hybrid local/offline AI agent:
 1. **Silver Layer AI ETL Enrichment:** `ai_enrich_reviews.py` extracts sentiment scores and complaint categories from raw customer text reviews.
-2. **Neuro-Symbolic Data Analyst Agent:** An interactive Text-to-SQL engine uses Vector-RAG domain scoring, live schema introspection, local query routing (~700+ QPS), and an automated self-correction reflection loop.
+2. **Local AI Data Analyst Agent:** An interactive Text-to-SQL engine uses Vector-RAG domain scoring, live schema introspection, local query routing (~700+ QPS), and an automated self-correction reflection loop.
 
 ---
 
@@ -22,7 +22,7 @@ The system combines a Kimball Star Schema data warehouse (Medallion Architecture
 * **Seasonal Demand Patterns:** Tracks booking trends across months, quarters, and days of the week.
 * **Executive Dashboards:** Includes a Power BI report file (`Data Warehouse Visualization.pbix`) for visual data exploration.
 
-### 2. Neuro-Symbolic AI Automation
+### 2. Local/Offline Agent Automation
 * **Unstructured Text Enrichment:** Converts raw customer reviews into structured metrics (`sentiment`, `complaint_category`, `satisfaction_score`).
 * **Dual-Mode Text-to-SQL Processing:** 
   * **Mode A (Neural LLM Reasoning):** Queries the Google Gemini 2.5 Flash API to resolve complex natural language questions.
@@ -65,7 +65,7 @@ The system combines a Kimball Star Schema data warehouse (Medallion Architecture
                                          |                                  |
                                          v                                  v
 +--------------------------------------------------+ +------------------------------+
-|             BUSINESS INTELLIGENCE                | |   NEURO-SYMBOLIC AI AGENT    |
+|             BUSINESS INTELLIGENCE                | |     LOCAL / OFFLINE AGENT    |
 |  Power BI (Data Warehouse Visualization.pbix)    | |  Streamlit Text-to-SQL Agent|
 |                                                  | |  (Vector RAG + Reflection)  |
 +--------------------------------------------------+ +------------------------------+
@@ -113,7 +113,7 @@ The system combines a Kimball Star Schema data warehouse (Medallion Architecture
 
 ---
 
-## Neuro-Symbolic Agent Engine Architecture
+## Local/Offline Agent Engine Architecture
 
 ```
                                 +-----------------------------------+
@@ -122,7 +122,7 @@ The system combines a Kimball Star Schema data warehouse (Medallion Architecture
                                                   |
                                                   v
                                 +-----------------------------------+
-                                |    NEURO-SYMBOLIC INTENT ROUTER   |
+                                |     LOCAL / OFFLINE INTENT ROUTER |
                                 +-----------------------------------+
                                   /                               \
                                  /                                 \
