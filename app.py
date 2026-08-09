@@ -235,7 +235,8 @@ with st.sidebar:
     else:
         st.error(
             f"🔴 PostgreSQL — Offline\n\n"
-            f"Start the `postgresql-x64-18` Windows service to continue."
+            f"Ensure PostgreSQL is running on `{os.getenv('DB_HOST', 'localhost')}:"
+            f"{os.getenv('DB_PORT', '5432')}` and retry."
         )
 
     st.markdown("---")

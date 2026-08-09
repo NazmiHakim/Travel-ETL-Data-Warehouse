@@ -5,17 +5,29 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME_OLTP", os.getenv("DB_NAME", "db_oltp"))
-DB_USER = os.getenv("DB_USER", "postgres") 
-DB_PASS = os.getenv("DB_PASS", "your_postgres_password")
+# ---------------------------------------------------------------------------
+# Database Configuration (loaded from .env)
+# ---------------------------------------------------------------------------
+DB_HOST: str = os.getenv("DB_HOST", "localhost")
+DB_PORT: str = os.getenv("DB_PORT", "5432")
+DB_NAME: str = os.getenv("DB_NAME_OLTP", os.getenv("DB_NAME", "db_oltp"))
+DB_USER: str = os.getenv("DB_USER", "postgres")
+DB_PASS: str = os.getenv("DB_PASS", "your_postgres_password")
 
+# Bronze output path
 BRONZE_PATH = os.path.join("data", "bronze")
 os.makedirs(BRONZE_PATH, exist_ok=True)
 OUTPUT_FILE = os.path.join(BRONZE_PATH, "bronze_bookings.csv")
 
-def extract_oltp_data():
+
+def extract_oltp_data() -> None:
+    """
+    Connects to the OLTP database (db_oltp), extracts all records from the
+    Bookings table, and writes them as a raw CSV to the Bronze landing zone.
+
+    The output CSV is saved at: data/bronze/bronze_bookings.csv
+    This file serves as the Bronze-layer input for transform_and_load.py.
+    """
     conn = None
     try:
         conn = psycopg2.connect(
@@ -23,25 +35,23 @@ def extract_oltp_data():
             port=DB_PORT,
             dbname=DB_NAME,
             user=DB_USER,
-            password=DB_PASS
+            password=DB_PASS,
         )
-
-        print("Terhubung ke db_oltp...")
+        print(f"Connected to OLTP database: {DB_HOST}:{DB_PORT}/{DB_NAME}")
 
         sql_query = "SELECT * FROM Bookings;"
-
         df = pd.read_sql_query(sql_query, conn)
 
         df.to_csv(OUTPUT_FILE, index=False)
-
-        print(f"BERHASIL: {len(df)} data diekstrak dari 'Bookings'.")
-        print(f"Data mentah disimpan di: {OUTPUT_FILE}")
+        print(f"SUCCESS: {len(df)} records extracted from 'Bookings'.")
+        print(f"Bronze output saved to: {OUTPUT_FILE}")
 
     except (Exception, psycopg2.DatabaseError) as error:
-        print(f"Error saat ekstraksi: {error}")
+        print(f"ERROR during OLTP extraction: {error}")
     finally:
         if conn:
             conn.close()
+
 
 if __name__ == "__main__":
     extract_oltp_data()
