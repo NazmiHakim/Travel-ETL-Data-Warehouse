@@ -17,18 +17,18 @@ The system combines a Kimball Star Schema data warehouse (Medallion Architecture
 ## System Capabilities
 
 ### 1. Descriptive Analytics and Business Intelligence
-* **Route and Destination Analysis:** Ranks flight routes and cities by passenger volume and gross revenue.
-* **Carrier Performance and Delay Metrics:** Computes average departure delays, arrival delays, and revenue per airline.
-* **Seasonal Demand Patterns:** Tracks booking trends across months, quarters, and days of the week.
-* **Executive Dashboards:** Includes a Power BI report file (`Data Warehouse Visualization.pbix`) for visual data exploration.
+* **Route and Destination Analysis:** The agent ranks flight routes and cities by passenger volume and gross revenue.
+* **Carrier Performance and Delay Metrics:** The pipeline computes departure delays, arrival delays, and revenue aggregations per airline.
+* **Seasonal Demand Patterns:** The data warehouse tracks booking trends across months, quarters, and years via `Dim_Date`.
+* **Executive Dashboards:** The repository includes a Power BI file (`Data Warehouse Visualization.pbix`) for visual data exploration.
 
 ### 2. Local/Offline Agent Automation
-* **Unstructured Text Enrichment:** Converts raw customer reviews into structured metrics (`sentiment`, `complaint_category`, `satisfaction_score`).
-* **Dual-Mode Text-to-SQL Processing:** 
-  * **Mode A (Neural LLM Reasoning):** Queries the Google Gemini 2.5 Flash API to resolve complex natural language questions.
-  * **Mode B (Local Deterministic Engine):** Uses regex matching, dynamic schema checks, and TF-IDF cosine similarity to generate SQL locally with zero API latency.
-* **Vector RAG Domain Scoring:** Computes TF-IDF vector similarity between user queries and target data domains to avoid keyword lookup failures.
-* **Self-Correction Reflection Loop:** Intercepts PostgreSQL execution errors and feeds the error trace back to the generator for automated retries (up to 3 cycles).
+* **Unstructured Text Enrichment:** The AI enrichment script converts raw customer reviews into structured metrics (`sentiment`, `complaint_category`, `satisfaction_score`).
+* **Dual-Mode Text-to-SQL Processing:**
+  * **Mode A (Gemini LLM):** The agent calls the Google Gemini 2.5 Flash API when a valid `GEMINI_API_KEY` is configured in `.env`.
+  * **Mode B (Local Deterministic Engine):** The agent uses its local NLP pattern engine when no API key is present, generating SQL via keyword matching and TF-IDF domain scoring with zero external latency.
+* **Vector RAG Domain Scoring:** The RAG retriever computes TF-IDF cosine similarity scores between user queries and domain knowledge chunks to route queries to the correct table (`fact_flights`, `fact_customer_feedback`, `dim_airline`, `dim_airport`).
+* **Self-Correction Reflection Loop:** The agent intercepts PostgreSQL execution errors and feeds the error trace back into the prompt for automated retries (up to 3 cycles).
 
 ---
 
@@ -53,10 +53,10 @@ The system combines a Kimball Star Schema data warehouse (Medallion Architecture
 |                                                                                   |
 |    SILVER LAYER (Conformed, Cleansed & AI Enriched)                               |
 |     - In-Memory Cleaning, Deduplication & Code Mappings (transform_and_load.py)   |
-|     - AI Review Text Analysis: Sentiment & Category Extraction (ai_enrich_reviews) |
+|     - AI Review Text Analysis: Sentiment & Category Extraction (ai_enrich_reviews)|
 |                                                                                   |
 |    GOLD LAYER (Star Schema Data Warehouse in db_dwh)                              |
-|     - Dim_Airport, Dim_Airline, Dim_Date                                         |
+|     - Dim_Airport, Dim_Airline, Dim_Date                                          |
 |     - Fact_Flights (Operational Delays + Revenue Aggregations)                    |
 |     - Fact_Customer_Feedback (AI-Enriched Sentiment & Complaint Categories)       |
 +-----------------------------------------------------------------------------------+
@@ -66,8 +66,8 @@ The system combines a Kimball Star Schema data warehouse (Medallion Architecture
                                          v                                  v
 +--------------------------------------------------+ +------------------------------+
 |             BUSINESS INTELLIGENCE                | |     LOCAL / OFFLINE AGENT    |
-|  Power BI (Data Warehouse Visualization.pbix)    | |  Streamlit Text-to-SQL Agent|
-|                                                  | |  (Vector RAG + Reflection)  |
+|  Power BI (Data Warehouse Visualization.pbix)    | |  Streamlit Text-to-SQL Agent |
+|                                                  | |  (Vector RAG + Reflection)   |
 +--------------------------------------------------+ +------------------------------+
 ```
 
@@ -80,36 +80,38 @@ The system combines a Kimball Star Schema data warehouse (Medallion Architecture
 
 ---
 
-### 2. Data Warehouse Database (`db_dwh`) - Star Schema
+### 2. Data Warehouse Database (`db_dwh`) — Star Schema
 
 ```
-       +--------------------+          +--------------------+
-       |    Dim_Airport     |          |    Dim_Airline     |
-       +--------------------+          +--------------------+
-       | PK airport_id_key  |<----+    | PK airline_key     |<-------+
-       |    airport_id      |     |    |    carrier_code    |        |
-       |    city            |     |    |    airline_name    |        |
-       |    state           |     |    +--------------------+        |
-       |    name            |     |              ^                   |
-       +--------------------+     |              |                   |
-                 ^                |              |                   |
-                 | (origin/dest)  |              |                   |
-                 +----------+     |              |                   |
-                            |     |              |                   |
-                     +-------------------------------+    +---------------------------+
-                     |          Fact_Flights         |    |  Fact_Customer_Feedback   |
-                     +-------------------------------+    +---------------------------+
-                     | PK flight_key                 |    | PK feedback_key           |
-                     | FK date_key ---------------------> | FK date_key               |
-                     | FK airline_key                |    | FK airline_key            |
-                     | FK origin_airport_key         |    |    sentiment              |
-                     | FK dest_airport_key           |    |    complaint_category     |
-                     |    avg_departure_delay        |    |    satisfaction_score     |
-                     |    avg_arrival_delay          |    |    review_text            |
-                     |    total_passengers           |    +---------------------------+
-                     |    total_revenue              |
-                     +-------------------------------+
+       +--------------------+          +--------------------+          +-------------------+
+       |    Dim_Airport     |          |    Dim_Airline     |          |     Dim_Date      |
+       +--------------------+          +--------------------+          +-------------------+
+       | PK airport_id_key  |          | PK airline_key     |          | PK date_key       |
+       |    airport_id      |          |    carrier_code    |          |    full_date      |
+       |    city            |          |    airline_name    |          |    day_of_week    |
+       |    state           |          +--------------------+          |    month          |
+       |    name            |                   ^                      |    quarter        |
+       +--------------------+                   |                      |    year           |
+                 ^                              |                      +-------------------+
+                 | (origin/dest FKs)            |                             ^
+                 |                              |                             |
+       +-------------------------------+   +---------------------------+      |
+       |         Fact_Flights          |   |  Fact_Customer_Feedback   |      |
+       +-------------------------------+   +---------------------------+      |
+       | PK flight_key                 |   | PK feedback_key           |      |
+       | FK date_key --------------------------> FK date_key ----------+      |
+       | FK airline_key --------------->   | FK airline_key            |
+       | FK origin_airport_key         |   |    sentiment              |
+       | FK dest_airport_key           |   |    complaint_category     |
+       |    departure_delay            |   |    satisfaction_score     |
+       |    arrival_delay              |   |    review_text            |
+       |    total_passengers           |   +---------------------------+
+       |    total_revenue              |
+       +-------------------------------+
 ```
+
+> [!NOTE]
+> Column names match `setup_database.sql` exactly. `Fact_Flights` stores raw `departure_delay` and `arrival_delay` integers; averages are computed at query time using `AVG()`.
 
 ---
 
@@ -122,79 +124,79 @@ The system combines a Kimball Star Schema data warehouse (Medallion Architecture
                                                   |
                                                   v
                                 +-----------------------------------+
-                                |     LOCAL / OFFLINE INTENT ROUTER |
-                                +-----------------------------------+
-                                  /                               \
-                                 /                                 \
-  (Lexical Match OR Vector TF-IDF Score > 0.12)           (Ambiguous / Complex Prompt)
-                               /                                     \
-                              v                                       v
-         +-----------------------------------------+   +----------------------------------+
-         |     MODE B: LOCAL DETERMINISTIC ENGINE  |   |    MODE A: NEURAL LLM ENGINE    |
-         |  - Sub-millisecond execution (~700 QPS) |   |  - Google Gemini 2.5 Flash API   |
-         |  - Zero API Latency & Zero Cost         |   |  - Deep reasoning & multi-joins  |
-         +-----------------------------------------+   +----------------------------------+
-                              \                                       /
-                               \                                     /
-                                v                                   v
-                                +-----------------------------------+
-                                |    SCHEMA INSPECTION & DDL CONVERT|
+                                |       ANALYTICAL QUERY GUARD      |
+                                |  (Non-analytical prompts rejected)|
                                 +-----------------------------------+
                                                   |
-                                                  v
-                                +-----------------------------------+
-                                |   POSTGRESQL READ-ONLY SANDBOX    |
-                                +-----------------------------------+
-                                                  |
-                                   (If SQL Execution Exception)
-                                                  |
-                                                  v
-                                +-----------------------------------+
-                                |   SELF-CORRECTION REFLECTION LOOP |
-                                |   (Catches error trace, retries)  |
-                                +-----------------------------------+
-                                                  |
-                                                  v
-                                +-----------------------------------+
-                                |  PLOTLY CHARTS & MARKDOWN OUTPUT  |
-                                +-----------------------------------+
+                    (GEMINI_API_KEY set in .env?)
+                                /                              \
+                          YES  /                                \  NO
+                              v                                  v
+       +----------------------------------+   +------------------------------------------+
+       |   MODE A: GEMINI LLM ENGINE      |   |   MODE B: LOCAL DETERMINISTIC ENGINE      |
+       |  - google-genai SDK call         |   |  - Keyword matching + TF-IDF domain score |
+       |  - gemini-2.5-flash model        |   |  - Sub-millisecond execution (~700+ QPS)  |
+       |  - Full schema context injected  |   |  - Zero API latency & zero external cost  |
+       +----------------------------------+   +------------------------------------------+
+                              \                                /
+                               \                              /
+                                v                            v
+                                +----------------------------+
+                                |    SQL QUERY EXTRACTION    |
+                                |  (parse ```sql ``` block)  |
+                                +----------------------------+
+                                              |
+                                              v
+                                +----------------------------+
+                                |  POSTGRESQL READ-ONLY DB   |
+                                |       EXECUTION            |
+                                +----------------------------+
+                                              |
+                              (If SQL Execution Exception)
+                                              |
+                                              v
+                                +----------------------------+
+                                |  SELF-CORRECTION LOOP      |
+                                |  Append error to prompt,   |
+                                |  retry up to 3 times       |
+                                +----------------------------+
+                                              |
+                                              v
+                                +----------------------------+
+                                | PLOTLY CHARTS & MARKDOWN   |
+                                |       OUTPUT               |
+                                +----------------------------+
 ```
 
 ---
 
-### Deep-Dive Explanation: Mode B (Local / Offline Agent Engine)
+### Deep-Dive: Mode B (Local Deterministic Engine)
 
-Mode B operates as an offline, zero-cost, and ultra-low latency (~700+ QPS) data analyst engine inside the `agent/` directory. The engine processes natural language user prompts locally on CPU resources without sending database schema information or query payloads to third-party cloud APIs.
+Mode B activates when no `GEMINI_API_KEY` is set in `.env`, or when the Gemini API call fails. The engine processes natural language prompts entirely on local CPU resources with no external network calls.
 
-#### 1. Core Component Breakdown
+#### Component Breakdown
 
 * **Vector RAG Retriever (`agent/rag_retriever.py`)**
-  * **Core Operation (S-P-O-K):** The local retriever (**Subjek**) evaluates (**Predikat**) prompt term vectors (**Objek**) against domain dictionaries using TF-IDF cosine similarity ($\tau = 0.12$) to route queries to the correct data warehouse tables (**Keterangan**).
-  * **Domain Grounding:** The vector retriever maps lexical variations (e.g., *"richest"*, *"lateness"*, *"bad reviews"*, *"busiest"*) directly to target dimensional tables (`dim_airline`, `dim_airport`, `fact_flights`, `fact_customer_feedback`).
+  The RAG retriever builds a TF-IDF vector matrix from a curated data dictionary containing domain knowledge for `Dim_Airline`, `Dim_Airport`, `Fact_Flights`, and `Fact_Customer_Feedback`. The retriever computes cosine similarity scores between the user query and each domain chunk to identify which table should anchor the SQL query. The relevance threshold for returning a context chunk is 0.05. Domain-routing thresholds (e.g., `feedback_score >= 0.12`, `delay_score >= 0.15`) are applied *inside* `generate_dynamic_sql` to select the correct query template.
 
-* **Dynamic Schema Inspector (`agent/schema_inspector.py`)**
-  * **Core Operation (S-P-O-K):** The schema inspector (**Subjek**) probes (**Predikat**) PostgreSQL `information_schema.columns` (**Objek**) at runtime to retrieve exact column names, data types, and primary-foreign key relationships (**Keterangan**).
-  * **Hallucination Prevention:** The inspector fetches active database metadata dynamically to eliminate invalid table and column references during query generation.
+* **Entity Normalizer (`agent/rag_retriever.py` — `normalize_entities`)**
+  The entity normalizer scans the raw user prompt for IATA airport codes (e.g., `ATL`, `JFK`) and airline carrier codes (e.g., `AA`, `DL`) and replaces them with their full city or airline names before SQL generation. This prevents unresolvable token mismatches against dimension table string values.
 
-* **Deterministic SQL Generator (`agent/sql_agent.py`)**
-  * **Core Operation (S-P-O-K):** The local generator (**Subjek**) constructs (**Predikat**) executable PostgreSQL `SELECT` queries (**Objek**) using regex intent parsers and rule-based SQL templates (**Keterangan**).
-  * **Query Capabilities:** The engine assembles multi-table `JOIN` statements, date filters (`dd.year = 2024`), aggregation functions (`AVG`, `COUNT`, `SUM`), and `ORDER BY / LIMIT` clauses.
+* **Deterministic SQL Generator (`agent/sql_agent.py` — `generate_dynamic_sql`)**
+  The local SQL generator applies regex-based intent parsing across six keyword dictionaries (`REVENUE_KEYWORDS`, `DELAY_KEYWORDS`, `REVIEW_KEYWORDS`, `LOCATION_KEYWORDS`, `PASSENGER_KEYWORDS`, `TIME_KEYWORDS`) to determine sort direction, `LIMIT` clause, year filter, and target domain. The generator then constructs a raw SQL `SELECT` string using f-string templates with multi-table `JOIN`, `GROUP BY`, `ORDER BY`, and optional `WHERE` year conditions. No external API is called.
 
-* **Automated Self-Correction Reflection Loop (`agent/sql_agent.py` & `agent/db_tools.py`)**
-  * **Core Operation (S-P-O-K):** The reflection loop (**Subjek**) intercepts (**Predikat**) database execution exceptions (**Objek**) inside a read-only PostgreSQL sandbox to automatically refine and retry malformed SQL queries up to 3 times (**Keterangan**).
-  * **Error Correction:** The agent analyzes raw PostgreSQL error tracebacks and applies structural SQL fixes automatically to maintain zero-fail execution.
+* **Reflection & Self-Correction Loop (`agent/sql_agent.py` — `process_query`)**
+  The main agent loop executes the generated SQL against `db_dwh` via `agent/db_tools.py` in a read-only sandbox. If PostgreSQL returns an error, the loop appends the full error trace and the failed SQL back into the prompt and calls `call_llm` again — up to `max_retries=3` cycles. Connection errors (`OperationalError`) abort the loop immediately, as SQL changes cannot fix connectivity failures.
 
----
+#### Mode B Step-by-Step Workflow
 
-#### 2. Mode B Step-by-Step Execution Workflow
-
-1. **Prompt Tokenization & Ingestion:** The intent router ingests the natural language user prompt and normalizes string tokens.
-2. **Vector Similarity Calculation:** The RAG retriever computes cosine similarity scores across domain vectors (`flights`, `reviews`, `airlines`, `airports`).
-3. **Deterministic Route Selection:** The engine activates Mode B when domain similarity scores exceed $\tau = 0.12$ or match known analytical keywords.
-4. **Live Schema Ingestion:** The schema inspector provides active table column definitions and foreign key join conditions.
-5. **SQL Query Assembly:** The local generator builds a parameterized, read-only SQL query with explicit column aliases.
-6. **Sandboxed Execution & Reflection:** The database tool executes the query against `db_dwh`, triggering the 3-cycle reflection loop if PostgreSQL returns an error trace.
-7. **Visualization & Response Rendering:** The Streamlit application renders the query output as interactive Plotly charts and markdown summary tables.
+1. **Guard Check:** The agent verifies the prompt contains at least one analytical keyword from `ALL_ANALYTICAL`; non-analytical inputs receive a help response immediately.
+2. **Cache Lookup:** The agent checks a session-level SHA-256 keyed dictionary to return cached results for repeated identical questions without a DB round-trip.
+3. **RAG Context Grounding:** The RAG retriever fetches the top 2 most relevant data dictionary chunks and entity normalizations.
+4. **SQL Generation:** `generate_dynamic_sql` builds a complete SQL query string based on keyword domain scores and parsed intent tokens.
+5. **DB Execution:** `execute_sql` runs the query against `db_dwh` and returns `(success: bool, DataFrame | error_msg, elapsed_seconds)`.
+6. **Reflection Loop:** On failure, the error message is appended to the prompt and a corrected SQL is generated; this repeats up to 3 times.
+7. **Output Rendering:** The Streamlit app renders the result `DataFrame` as interactive Plotly charts and a natural-language markdown summary.
 
 ---
 
@@ -208,16 +210,14 @@ Follow these steps to set up and run the project locally.
 
 #### 1. Prerequisites
 - **Python**: Version 3.8 or higher.
-- **PostgreSQL**: Version 14 or higher running on port `5432`.
+- **PostgreSQL**: Version 14 or higher, running on port `5432`.
 
 #### 2. Virtual Environment Setup
-Run the following commands in your project directory:
 
 ```bash
-# Create virtual environment
+# Create and activate virtual environment
 python -m venv venv
 
-# Activate virtual environment
 # Windows PowerShell:
 .\venv\Scripts\Activate.ps1
 # macOS / Linux:
@@ -227,71 +227,77 @@ source venv/bin/activate
 pip install pandas sqlalchemy psycopg2-binary google-genai python-dotenv Faker streamlit plotly scikit-learn
 ```
 
-#### 3. Database Initialization
-Create the target databases using `psql` or pgAdmin:
+#### 3. Environment Variables
+
+Copy `.env.example` to `.env` and fill in your values:
+
+```env
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=db_dwh
+DB_USER=postgres
+DB_PASS=your_postgres_password
+
+# Optional — agent runs fully offline (Mode B) if omitted
+GEMINI_API_KEY=your_gemini_api_key_here
+
+# Optional — only needed for extract_api.py
+AMADEUS_KEY=your_amadeus_key_here
+AMADEUS_SECRET=your_amadeus_secret_here
+```
+
+#### 4. Database Initialization
+
+Create both databases in PostgreSQL:
 
 ```sql
 CREATE DATABASE db_oltp;
 CREATE DATABASE db_dwh;
 ```
 
-Execute `setup_database.sql` against both databases:
+Run `setup_database.sql` — it contains DDL for both databases:
+
 ```bash
 psql -U postgres -d db_oltp -f setup_database.sql
 psql -U postgres -d db_dwh -f setup_database.sql
-```
-
-#### 4. Environment Variables Configuration
-Create a `.env` file in the root directory:
-
-```env
-# Database Configuration
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASS=your_postgres_password
-
-# Gemini API Key (Optional: system defaults to Mode B if omitted)
-GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
 ---
 
 ### Step 2: Pipeline Execution
 
-Run the scripts in sequential order to execute the ETL pipeline:
+Run the scripts in order:
 
 ```bash
-# 1. Generate synthetic source CSV files
+# 1. Generate synthetic airports/flights/reviews CSV files
 python "python script/generate_source_data.py"
 
-# 2. Populate OLTP database with 5,000 records
+# 2. Populate the OLTP database with 5,000 booking records
 python "python script/generate_dummy_oltp.py"
 
-# 3. Extract OLTP data into the Bronze layer
+# 3. Extract OLTP bookings to Bronze layer CSV
 python "python script/extract_oltp.py"
 
-# 4. Transform and load data into the Gold Data Warehouse
+# 4. Transform and load all data into the Gold Data Warehouse (db_dwh)
 python "python script/transform_and_load.py"
 
-# 5. Run AI review enrichment
+# 5. Run AI enrichment to populate Fact_Customer_Feedback
 python "python script/ai_enrich_reviews.py"
 ```
 
 ---
 
-### Step 3: Launch Streamlit Application
-
-Start the interactive web application:
+### Step 3: Launch the Agent
 
 ```bash
 streamlit run app.py
 ```
 
-The app will open automatically at `http://localhost:8501`. You can test sample questions such as:
-- *"Which airline generated the highest total revenue in 2024?"*
+The app opens at `http://localhost:8501`. Example questions to test:
+- *"Which airline generated the highest total revenue?"*
 - *"Show the top 5 destination cities by passenger volume."*
-- *"Which airline received the lowest average rating and highest departure delays?"*
+- *"Which airline has the most negative reviews?"*
+- *"What are the average departure delays per airline?"*
 
 ---
 
@@ -299,27 +305,30 @@ The app will open automatically at `http://localhost:8501`. You can test sample 
 
 ```text
 .
-├── app.py                             # Interactive Streamlit Web UI
-├── setup_database.sql                 # DDL Script for db_oltp & db_dwh
-├── MASTER_PROJECT_DOCUMENTATION.md    # Technical documentation reference
-├── Data Warehouse Visualization.pbix  # Power BI Dashboard file
-├── README.md                          # Repository overview
-├── test_whitebox_100k.py              # 200,000-Query White-Box Benchmark
-├── test_whitebox_5k.py                # 10,000-Case SQL Assertion Suite
-├── agent/                             # AI Agent Module
-│   ├── db_tools.py                    # Database connection interface
-│   ├── schema_inspector.py            # Dynamic schema introspection
-│   ├── rag_retriever.py               # Vector RAG & similarity engine
-│   └── sql_agent.py                   # Text-to-SQL Agent with Reflection Loop
-├── data/                              # Source and Bronze Data Directory
+├── app.py                             # Streamlit Web UI
+├── setup_database.sql                 # DDL for db_oltp & db_dwh
+├── .env.example                       # Environment variable template
+├── MASTER_PROJECT_DOCUMENTATION.md    # Full technical documentation
+├── Data Warehouse Visualization.pbix  # Power BI dashboard file
+├── README.md                          # This file
+├── test_whitebox_suite.py             # 200,000-query white-box stress test
+├── test_whitebox_5k.py                # 10,000-case SQL assertion suite
+├── test_routing.py                    # Intent router unit tests
+├── test_rag_schema.py                 # RAG retriever & schema inspector tests
+├── agent/
+│   ├── db_tools.py                    # SQLAlchemy engine & execute_sql
+│   ├── schema_inspector.py            # Live PostgreSQL schema introspection
+│   ├── rag_retriever.py               # TF-IDF Vector RAG engine
+│   └── sql_agent.py                   # TextToSQLAgent (Mode A + Mode B + Reflection)
+├── data/
 │   ├── airports.csv                   # Airport reference data
 │   ├── flights.csv                    # Operational flight data
-│   └── bronze/                        # Ingested datasets and text reviews
-└── python script/                     # Pipeline Execution Scripts
-    ├── generate_source_data.py        # Synthetic dataset generator
-    ├── generate_dummy_oltp.py         # OLTP dataset generator
-    ├── extract_oltp.py                # OLTP extraction script
-    ├── extract_api.py                 # Amadeus API extraction script
-    ├── transform_and_load.py          # ETL transformation script
-    └── ai_enrich_reviews.py           # Text review enrichment script
+│   └── bronze/                        # Bronze-layer extracted files
+└── python script/
+    ├── generate_source_data.py        # Synthetic CSV generator
+    ├── generate_dummy_oltp.py         # OLTP booking record generator
+    ├── extract_oltp.py                # OLTP → Bronze extractor
+    ├── extract_api.py                 # Amadeus API extractor (optional)
+    ├── transform_and_load.py          # Silver → Gold ETL transformer
+    └── ai_enrich_reviews.py           # AI review enrichment script
 ```
