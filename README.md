@@ -169,20 +169,20 @@ Mode B operates as an offline, zero-cost, and ultra-low latency (~700+ QPS) data
 #### 1. Core Component Breakdown
 
 * **Vector RAG Retriever (`agent/rag_retriever.py`)**
-  * **Function (S-V-O-M):** The local retriever (**Subject**) evaluates (**Verb**) prompt term vectors (**Object**) against domain dictionaries using TF-IDF cosine similarity ($\tau = 0.12$) to route queries to the correct data warehouse tables (**Modifier**).
-  * **Domain Grounding:** Maps lexical variations (e.g., *"richest"*, *"lateness"*, *"bad reviews"*, *"busiest"*) to target dimensional tables (`dim_airline`, `dim_airport`, `fact_flights`, `fact_customer_feedback`).
+  * **Core Operation (S-P-O-K):** The local retriever (**Subjek**) evaluates (**Predikat**) prompt term vectors (**Objek**) against domain dictionaries using TF-IDF cosine similarity ($\tau = 0.12$) to route queries to the correct data warehouse tables (**Keterangan**).
+  * **Domain Grounding:** The vector retriever maps lexical variations (e.g., *"richest"*, *"lateness"*, *"bad reviews"*, *"busiest"*) directly to target dimensional tables (`dim_airline`, `dim_airport`, `fact_flights`, `fact_customer_feedback`).
 
 * **Dynamic Schema Inspector (`agent/schema_inspector.py`)**
-  * **Function (S-V-O-M):** The schema inspector (**Subject**) probes (**Verb**) PostgreSQL `information_schema.columns` (**Object**) at runtime to retrieve exact column names, data types, and primary-foreign key relationships (**Modifier**).
-  * **Hallucination Prevention:** Fetches real-time database schema information dynamically to eliminate invalid table and column references during query generation.
+  * **Core Operation (S-P-O-K):** The schema inspector (**Subjek**) probes (**Predikat**) PostgreSQL `information_schema.columns` (**Objek**) at runtime to retrieve exact column names, data types, and primary-foreign key relationships (**Keterangan**).
+  * **Hallucination Prevention:** The inspector fetches active database metadata dynamically to eliminate invalid table and column references during query generation.
 
 * **Deterministic SQL Generator (`agent/sql_agent.py`)**
-  * **Function (S-V-O-M):** The local generator (**Subject**) constructs (**Verb**) executable PostgreSQL `SELECT` queries (**Object**) using regex intent parsers and rule-based SQL templates (**Modifier**).
-  * **Query Capabilities:** Assembles multi-table `JOIN` statements, date filters (`dd.year = 2024`), aggregation functions (`AVG`, `COUNT`, `SUM`), and `ORDER BY / LIMIT` clauses.
+  * **Core Operation (S-P-O-K):** The local generator (**Subjek**) constructs (**Predikat**) executable PostgreSQL `SELECT` queries (**Objek**) using regex intent parsers and rule-based SQL templates (**Keterangan**).
+  * **Query Capabilities:** The engine assembles multi-table `JOIN` statements, date filters (`dd.year = 2024`), aggregation functions (`AVG`, `COUNT`, `SUM`), and `ORDER BY / LIMIT` clauses.
 
 * **Automated Self-Correction Reflection Loop (`agent/sql_agent.py` & `agent/db_tools.py`)**
-  * **Function (S-V-O-M):** The reflection loop (**Subject**) intercepts (**Verb**) database execution exceptions (**O**) inside a read-only PostgreSQL sandbox to automatically refine and retry malformed SQL queries up to 3 times (**Modifier**).
-  * **Error Correction:** Analyzes raw PostgreSQL error tracebacks and applies structural SQL fixes automatically to maintain zero-fail execution.
+  * **Core Operation (S-P-O-K):** The reflection loop (**Subjek**) intercepts (**Predikat**) database execution exceptions (**Objek**) inside a read-only PostgreSQL sandbox to automatically refine and retry malformed SQL queries up to 3 times (**Keterangan**).
+  * **Error Correction:** The agent analyzes raw PostgreSQL error tracebacks and applies structural SQL fixes automatically to maintain zero-fail execution.
 
 ---
 
