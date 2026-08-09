@@ -5,9 +5,7 @@ import random
 import io
 import re
 
-# Force UTF-8 stdout encoding for Windows terminal
-sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-sys.path.insert(0, 'd:/Flight ETL integrated with agent')
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from agent.sql_agent import (
     TextToSQLAgent,
@@ -17,9 +15,14 @@ from agent.sql_agent import (
 )
 from agent.db_tools import execute_sql
 
+if __name__ == "__main__":
+    # Force UTF-8 stdout only when run as a standalone script (not under pytest,
+    # which manages its own capture stream and will crash if we replace stdout).
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
 print("==========================================================================", flush=True)
-print("✈️ TRAVELNUSANTARA AI DATA ANALYST — WHITE-BOX TEST SUITE (10,000 TESTS)")
-print("🔥 5,000 UNIQUE HAPPY PATH + 5,000 UNIQUE BAD PATH WITH INPUT-OUTPUT SQL ASSERTIONS")
+print("TRAVELNUSANTARA AI DATA ANALYST -- WHITE-BOX TEST SUITE (10,000 TESTS)")
+print("5,000 UNIQUE HAPPY PATH + 5,000 UNIQUE BAD PATH WITH INPUT-OUTPUT SQL ASSERTIONS")
 print("==========================================================================", flush=True)
 
 # ---------------------------------------------------------------------------

@@ -93,7 +93,7 @@ def test_limit_parsing(prompt: str, expected_limit: str) -> None:
 # ---------------------------------------------------------------------------
 @pytest.mark.parametrize("prompt,expected_direction", [
     ("show the airline with the lowest revenue", "ASC"),
-    ("which airline has the worst delays?", "ASC"),
+    ("which airline has the worst delays?", "DESC"),   # worst = highest delay value = DESC
     ("richest airline", "DESC"),
     ("airline with the most passengers", "DESC"),
 ])
