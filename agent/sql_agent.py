@@ -1,4 +1,4 @@
-import os
+﻿import os
 import re
 import hashlib
 import pandas as pd
@@ -21,10 +21,10 @@ def _wm(keywords: list, text: str) -> bool:
     return False
 
 # ---------------------------------------------------------------------------
-# Keyword Dictionaries — used for both intent routing and analytical guard
+# Keyword Dictionaries â€” used for both intent routing and analytical guard
 # ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
-# Keyword Dictionaries — enriched for intent routing and analytical guard
+# Keyword Dictionaries â€” enriched for intent routing and analytical guard
 # ---------------------------------------------------------------------------
 REVENUE_KEYWORDS  = [
     "richest", "rich", "wealthiest", "wealthy", "revenue", "money",
@@ -75,9 +75,18 @@ GENERAL_KEYWORDS  = [
     "ranking", "report", "summary", "breakdown"
 ]
 
+PERFORMANCE_KEYWORDS = [
+    "performance", "performing", "overall", "composite", "combined",
+    "comprehensive", "all-around", "all around", "holistic",
+    "score", "index", "benchmark", "kpi", "metrics",
+    "best to worst", "worst to best", "rank", "ranking", "ranked",
+    "compare", "comparison", "versus", "vs",
+]
+
 ALL_ANALYTICAL = (
     REVENUE_KEYWORDS + DELAY_KEYWORDS + REVIEW_KEYWORDS +
-    LOCATION_KEYWORDS + PASSENGER_KEYWORDS + TIME_KEYWORDS + GENERAL_KEYWORDS
+    LOCATION_KEYWORDS + PASSENGER_KEYWORDS + TIME_KEYWORDS +
+    GENERAL_KEYWORDS + PERFORMANCE_KEYWORDS
 )
 
 # ---------------------------------------------------------------------------
@@ -99,7 +108,7 @@ def is_analytical_query(user_question: str) -> bool:
 
 # ---------------------------------------------------------------------------
 # Dynamic NLP SQL Generator
-# Receives ONLY the user question — never the full system prompt.
+# Receives ONLY the user question â€” never the full system prompt.
 # ---------------------------------------------------------------------------
 _GLOBAL_RAG_ENGINE = DataDictionaryVectorRAG()
 
@@ -123,17 +132,24 @@ def generate_dynamic_sql(user_question: str) -> str:
     p = normalized_question.lower()
 
     # --- 1. Limit Parsing ---
-    # Avoid confusing "10 years" or "10 months" with a LIMIT 10
-    limit = 5
+    # "all" keyword explicitly removes the LIMIT cap so the full dataset is returned.
+    # "top N" / "limit N" sets exact LIMIT. Standalone superlatives default to LIMIT 1.
+    no_limit = _wm(["all", "every", "entire"], p) and not re.search(r"\b(?:top|limit)\s+\d+", p)
+    limit = 10  # default: return top 10 for unspecified requests
     m = re.search(r"\b(?:top|limit)\s+(\d+)\b", p)
-    if m:
+    if no_limit:
+        limit = 50   # effectively "show all" â€” use a generous cap to avoid unbounded queries
+    elif m:
         limit = int(m.group(1))
     elif _wm(["10"], p) and _wm(["airline", "airlines", "carrier", "carriers", "city", "cities", "route", "routes"], p):
         limit = 10
     elif _wm(["3", "three"], p) and _wm(["airline", "airlines", "carrier", "carriers", "city", "cities"], p):
         limit = 3
+    elif _wm(["5", "five"], p) and _wm(["airline", "airlines", "carrier", "carriers", "city", "cities"], p):
+        limit = 5
     elif _wm(["most", "richest", "highest", "best", "worst", "busiest"], p) and not _wm(["10", "5", "3", "top", "list", "all", "rank", "ranking"], p):
         limit = 1
+    limit_clause = f"LIMIT {limit}"
 
     # --- 2. Sort Direction ---
     order_dir = "DESC"
@@ -163,6 +179,24 @@ def generate_dynamic_sql(user_question: str) -> str:
     # DOMAIN ROUTING RULES (Vector RAG + Lexical Grounding)
     # =========================================================================
 
+    # --- Domain 0: Composite Airline Performance (v_airline_performance VIEW) ---
+    # Triggered when the query contains performance/ranking/overall keywords AND
+    # references airlines â€” routes to the composite performance view directly.
+    is_performance_query = _wm(PERFORMANCE_KEYWORDS, p) and (
+        _wm(["airline", "airlines", "carrier", "carriers"], p)
+        or not _wm(LOCATION_KEYWORDS + ["route", "city", "cities", "destination"], p)
+    )
+    if is_performance_query and not _wm(DELAY_KEYWORDS + REVENUE_KEYWORDS, p):
+        return (
+            f"SELECT airline_name, carrier_code, "
+            f"performance_score, performance_rank, "
+            f"otp_percentage, avg_departure_delay, "
+            f"total_revenue, avg_satisfaction, total_reviews "
+            f"FROM v_airline_performance "
+            f"ORDER BY performance_rank ASC "
+            f"{limit_clause};"
+        )
+
     # --- Domain A: Operational Flight Delays ---
     # Checked before reviews if delay/lateness keywords or high delay vector scores are present
     if (_wm(DELAY_KEYWORDS, p) or delay_score >= 0.15) and not _wm(["review", "reviews", "feedback", "rating", "csat", "nps", "sentiment"], p) and not _wm(REVENUE_KEYWORDS, p):
@@ -177,7 +211,7 @@ def generate_dynamic_sql(user_question: str) -> str:
                 f"JOIN dim_date dd ON ff.date_key = dd.date_key "
                 f"{year_where} "
                 f"GROUP BY da_orig.city, da_dest.city "
-                f"ORDER BY avg_departure_delay {order_dir} LIMIT {limit};"
+                f"ORDER BY avg_departure_delay {order_dir} {limit_clause};"
             )
         else:
             return (
@@ -189,7 +223,7 @@ def generate_dynamic_sql(user_question: str) -> str:
                 f"JOIN dim_date dd ON ff.date_key = dd.date_key "
                 f"{year_where} "
                 f"GROUP BY da.airline_name "
-                f"ORDER BY avg_departure_delay {order_dir} LIMIT {limit};"
+                f"ORDER BY avg_departure_delay {order_dir} {limit_clause};"
             )
 
     # --- Domain B: Customer Reviews & Feedback (Vector Grounded) ---
@@ -205,7 +239,7 @@ def generate_dynamic_sql(user_question: str) -> str:
                     f"JOIN dim_airline da ON fcf.airline_key = da.airline_key "
                     f"WHERE fcf.sentiment = 'Negative' OR fcf.satisfaction_score <= 2 "
                     f"GROUP BY da.airline_name "
-                    f"ORDER BY negative_reviews {order_dir} LIMIT {limit};"
+                    f"ORDER BY negative_reviews {order_dir} {limit_clause};"
                 )
             else:
                 return (
@@ -215,7 +249,7 @@ def generate_dynamic_sql(user_question: str) -> str:
                     f"FROM fact_customer_feedback "
                     f"WHERE sentiment = 'Negative' "
                     f"GROUP BY complaint_category "
-                    f"ORDER BY negative_count {order_dir} LIMIT {limit};"
+                    f"ORDER BY negative_count {order_dir} {limit_clause};"
                 )
         elif _wm(["good", "best", "positive", "highly rated", "top rated", "great", "excellent"], p):
             if _wm(["airline", "carrier", "airlines", "carriers"], p):
@@ -227,7 +261,7 @@ def generate_dynamic_sql(user_question: str) -> str:
                     f"JOIN dim_airline da ON fcf.airline_key = da.airline_key "
                     f"WHERE fcf.sentiment = 'Positive' OR fcf.satisfaction_score >= 4 "
                     f"GROUP BY da.airline_name "
-                    f"ORDER BY avg_satisfaction {order_dir}, positive_reviews {order_dir} LIMIT {limit};"
+                    f"ORDER BY avg_satisfaction {order_dir}, positive_reviews {order_dir} {limit_clause};"
                 )
             else:
                 return (
@@ -237,7 +271,7 @@ def generate_dynamic_sql(user_question: str) -> str:
                     f"FROM fact_customer_feedback "
                     f"WHERE sentiment = 'Positive' OR satisfaction_score >= 4 "
                     f"GROUP BY complaint_category "
-                    f"ORDER BY avg_satisfaction {order_dir} LIMIT {limit};"
+                    f"ORDER BY avg_satisfaction {order_dir} {limit_clause};"
                 )
         elif _wm(["sentiment", "rating", "score", "csat"], p):
             return (
@@ -254,14 +288,14 @@ def generate_dynamic_sql(user_question: str) -> str:
                 f"FROM fact_customer_feedback fcf "
                 f"JOIN dim_airline da ON fcf.airline_key = da.airline_key "
                 f"GROUP BY da.airline_name "
-                f"ORDER BY total_reviews {order_dir} LIMIT {limit};"
+                f"ORDER BY total_reviews {order_dir} {limit_clause};"
             )
         else:
             return (
                 f"SELECT complaint_category, sentiment, COUNT(*) AS review_count "
                 f"FROM fact_customer_feedback "
                 f"GROUP BY complaint_category, sentiment "
-                f"ORDER BY review_count {order_dir} LIMIT {limit};"
+                f"ORDER BY review_count {order_dir} {limit_clause};"
             )
 
     # --- Domain C: Location / Destination / Airport Volume ---
@@ -276,7 +310,7 @@ def generate_dynamic_sql(user_question: str) -> str:
                 f"JOIN dim_date dd ON ff.date_key = dd.date_key "
                 f"{year_where} "
                 f"GROUP BY da_dest.city, da_dest.name "
-                f"ORDER BY total_passengers {order_dir} LIMIT {limit};"
+                f"ORDER BY total_passengers {order_dir} {limit_clause};"
             )
         elif _wm(["origin", "from"], p):
             return (
@@ -285,7 +319,7 @@ def generate_dynamic_sql(user_question: str) -> str:
                 f"FROM fact_flights ff "
                 f"JOIN dim_airport da_orig ON ff.origin_airport_key = da_orig.airport_id_key "
                 f"GROUP BY da_orig.city, da_orig.name "
-                f"ORDER BY total_passengers {order_dir} LIMIT {limit};"
+                f"ORDER BY total_passengers {order_dir} {limit_clause};"
             )
         else:
             return (
@@ -296,7 +330,7 @@ def generate_dynamic_sql(user_question: str) -> str:
                 f"JOIN dim_airport da_orig ON ff.origin_airport_key = da_orig.airport_id_key "
                 f"JOIN dim_airport da_dest ON ff.dest_airport_key = da_dest.airport_id_key "
                 f"GROUP BY da_orig.city, da_dest.city "
-                f"ORDER BY total_passengers {order_dir} LIMIT {limit};"
+                f"ORDER BY total_passengers {order_dir} {limit_clause};"
             )
 
     # --- Domain D: Time Series Trends ---
@@ -343,14 +377,14 @@ def generate_dynamic_sql(user_question: str) -> str:
             f"JOIN dim_date dd ON ff.date_key = dd.date_key "
             f"{year_where} "
             f"GROUP BY da.airline_name, da.carrier_code "
-            f"ORDER BY {primary_sort} {order_dir} LIMIT {limit};"
+            f"ORDER BY {primary_sort} {order_dir} {limit_clause};"
         )
 
 
 def call_llm(full_prompt: str, user_question: str, api_key: str = None) -> str:
     """
     Calls Gemini API when a key is available.
-    Fallback: generate_dynamic_sql(user_question) — NOT the full prompt.
+    Fallback: generate_dynamic_sql(user_question) â€” NOT the full prompt.
     """
     key = api_key or os.getenv("GEMINI_API_KEY")
     if key:
@@ -433,12 +467,12 @@ class TextToSQLAgent:
                 "sql_query": "",
                 "data": None,
                 "summary": (
-                    "👋 Hi! I'm TravelNusantara's AI Data Analyst.\n\n"
+                    "ðŸ‘‹ Hi! I'm TravelNusantara's AI Data Analyst.\n\n"
                     "I can answer questions about:\n"
-                    "- ✈️ **Flight revenue & passengers** by airline\n"
-                    "- ⏱️ **Departure & arrival delays** by airline or route\n"
-                    "- 📍 **Top destination & origin cities**\n"
-                    "- 💬 **Customer sentiment & complaint categories**\n\n"
+                    "- âœˆï¸ **Flight revenue & passengers** by airline\n"
+                    "- â±ï¸ **Departure & arrival delays** by airline or route\n"
+                    "- ðŸ“ **Top destination & origin cities**\n"
+                    "- ðŸ’¬ **Customer sentiment & complaint categories**\n\n"
                     "Try: *\"Which airline has the highest revenue?\"* "
                     "or *\"Show top 5 destination cities.\"*"
                 ),
@@ -451,14 +485,14 @@ class TextToSQLAgent:
         ck = _cache_key(user_question)
         if use_cache and ck in _query_cache:
             cached = _query_cache[ck].copy()
-            cached["logs"] = [f"⚡ Cache hit — returning stored result for: '{user_question}'"]
+            cached["logs"] = [f"âš¡ Cache hit â€” returning stored result for: '{user_question}'"]
             cached["from_cache"] = True
             return cached
 
         if effective_key:
-            logs.append("🔑 Using Gemini LLM API (gemini-2.5-flash).")
+            logs.append("ðŸ”‘ Using Gemini LLM API (gemini-2.5-flash).")
         else:
-            logs.append("⚡ Using Dynamic NLP Pattern Engine.")
+            logs.append("âš¡ Using Dynamic NLP Pattern Engine.")
 
         system_instruction = f"""You are an expert PostgreSQL Data Analyst for TravelNusantara.
 Translate the user's question into a valid PostgreSQL query for database 'db_dwh'.
@@ -499,10 +533,10 @@ RULES:
             if success:
                 result_df = result_df_or_err
                 logs.append(
-                    f"✅ SUCCESS — {len(result_df)} row(s) in {elapsed:.3f}s."
+                    f"âœ… SUCCESS â€” {len(result_df)} row(s) in {elapsed:.3f}s."
                 )
                 if len(result_df) == 0 and attempt < max_retries:
-                    logs.append("⚠️ 0 rows — relaxing filter conditions...")
+                    logs.append("âš ï¸ 0 rows â€” relaxing filter conditions...")
                     current_prompt += (
                         f"\n\nAttempt {attempt}: 0 rows for:\n{sql_query}\n"
                         "Relax any date/filter conditions and regenerate."
@@ -511,12 +545,12 @@ RULES:
                 break
             else:
                 error_msg = str(result_df_or_err)
-                # Break immediately for connectivity errors — SQL changes cannot fix these
+                # Break immediately for connectivity errors â€” SQL changes cannot fix these
                 if any(k in error_msg for k in ["Connection Refused", "not reachable", "OperationalError"]):
-                    logs.append(f"🔴 DB CONNECTION ERROR — aborting retries.")
+                    logs.append(f"ðŸ”´ DB CONNECTION ERROR â€” aborting retries.")
                     break
-                logs.append(f"❌ Error: {error_msg}")
-                logs.append("🔁 Triggering Reflection & Correction Loop...")
+                logs.append(f"âŒ Error: {error_msg}")
+                logs.append("ðŸ” Triggering Reflection & Correction Loop...")
                 current_prompt += (
                     f"\n\nAttempt {attempt} failed:\n{error_msg}\n"
                     f"Query was:\n{sql_query}\n"
@@ -553,7 +587,7 @@ RULES:
 
     def _synthesize_answer(self, user_question: str, df: pd.DataFrame) -> str:
         n = len(df)
-        summary = "### 📊 Analytical Summary\n"
+        summary = "### ðŸ“Š Analytical Summary\n"
         summary += f"Found **{n} record(s)** for: *\"{user_question}\"*.\n\n"
         numeric_cols = df.select_dtypes(include=["number"]).columns
         if len(numeric_cols) > 0:
@@ -569,3 +603,4 @@ RULES:
                 elif any(k in col.lower() for k in ["delay", "satisfaction", "score"]):
                     summary += f"- **Avg {title}:** {avg:.2f}\n"
         return summary
+

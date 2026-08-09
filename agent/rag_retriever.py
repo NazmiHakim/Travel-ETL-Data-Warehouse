@@ -141,6 +141,24 @@ DATA_DICTIONARY: List[Dict[str, Any]] = [
         ),
         "aliases": {},
     },
+    {
+        "id": "airline_performance",
+        "category": "v_airline_performance",
+        "title": "Composite Airline Performance Ranking & KPIs",
+        "content": (
+            "v_airline_performance is a PostgreSQL VIEW that computes an overall airline performance score. "
+            "Use this view when the user asks about: overall performance, airline ranking, composite score, "
+            "which airline is best/worst overall, compare airlines, airline benchmark, KPIs, index. "
+            "Columns: airline_name, carrier_code, performance_score (0.0-1.0, higher = better), "
+            "performance_rank (1 = best), otp_percentage (on-time performance %), "
+            "avg_departure_delay (minutes), total_revenue (USD), avg_satisfaction (1-5), total_reviews. "
+            "Score weights: 40% OTP + 30% revenue efficiency + 30% customer satisfaction. "
+            "Sort by performance_rank ASC to get airlines from best to worst. "
+            "Keywords: performance, rank, ranking, ranked, best to worst, worst to best, overall, "
+            "compare, versus, holistic, composite, score, index, benchmark."
+        ),
+        "aliases": {},
+    },
 ]
 
 
