@@ -1,4 +1,4 @@
-import pandas as pd
+﻿import pandas as pd
 from sqlalchemy import create_engine, text
 import os
 import sys
@@ -22,7 +22,7 @@ FLIGHTS_FILE = os.path.join(BASE_DATA_PATH, "flights.csv")
 BOOKINGS_FILE = os.path.join(BASE_DATA_PATH, "bronze", "bronze_bookings.csv")
 
 # ---------------------------------------------------------------------------
-# Pre-flight file check — abort early if any required input file is missing.
+# Pre-flight file check -- abort early if any required input file is missing.
 # ---------------------------------------------------------------------------
 print("Verifying input file paths...")
 all_files_found = True
@@ -31,7 +31,7 @@ for name, path in {"Airports": AIRPORTS_FILE, "Flights": FLIGHTS_FILE, "Bookings
         print(f"ERROR: '{name}' not found at: {path}")
         all_files_found = False
     else:
-        print(f"  OK: {name} → {path}")
+        print(f"  OK: {name} -> {path}")
 
 if not all_files_found:
     print("\nPipeline aborted. Ensure all source files exist before running.")
@@ -49,7 +49,7 @@ except Exception as e:
     sys.exit(1)
 
 # ---------------------------------------------------------------------------
-# Airline carrier code → full name lookup map
+# Airline carrier code -> full name lookup map
 # ---------------------------------------------------------------------------
 CARRIER_MAP: dict[str, str] = {
     "DL": "Delta Air Lines",
@@ -80,7 +80,7 @@ def clean_data(df: pd.DataFrame, table_name: str) -> pd.DataFrame:
     df = df.drop_duplicates()
     if "state" in df.columns:
         df["state"] = df["state"].fillna("N/A")
-    print(f"  Cleaned — {len(df)} records remaining.")
+    print(f"  Cleaned -- {len(df)} records remaining.")
     return df
 
 
@@ -145,8 +145,8 @@ def load_fact_flights() -> None:
     tables, and bulk-loads the result into Fact_Flights.
 
     Aggregation logic:
-    - Bookings are grouped by (date, carrier, origin, dest) → total_passengers, total_revenue
-    - Flights are grouped by (date, carrier, origin, dest) → mean departure_delay, arrival_delay
+    - Bookings are grouped by (date, carrier, origin, dest) -> total_passengers, total_revenue
+    - Flights are grouped by (date, carrier, origin, dest) -> mean departure_delay, arrival_delay
     - The two aggregates are LEFT JOINed so flights without delay data are preserved (delay = 0).
 
     Note: Requires Dim_Airline to be populated before running.
@@ -200,8 +200,8 @@ def load_fact_flights() -> None:
         df_agg["departure_delay"] = df_agg["departure_delay"].fillna(0).round().astype(int)
         df_agg["arrival_delay"] = df_agg["arrival_delay"].fillna(0).round().astype(int)
 
-        # Surrogate key lookups — swap business keys for DWH surrogate keys
-        print("  Performing surrogate key lookups (business keys → DWH keys)...")
+        # Surrogate key lookups -- swap business keys for DWH surrogate keys
+        print("  Performing surrogate key lookups (business keys -> DWH keys)...")
         df_fact = pd.merge(df_agg, dim_date, left_on="date_only", right_on="full_date", how="inner")
         df_fact = pd.merge(df_fact, dim_airline, left_on="flight_carrier_code", right_on="carrier_code", how="inner")
 
@@ -244,7 +244,7 @@ if __name__ == "__main__":
             conn.commit()
             print("\nExisting DWH tables truncated successfully.")
     except Exception as e:
-        print(f"\nWARNING: TRUNCATE failed ({e}). Tables may already be empty — continuing...")
+        print(f"\nWARNING: TRUNCATE failed ({e}). Tables may already be empty -- continuing...")
 
     load_dim_airport()
     load_dim_airline()

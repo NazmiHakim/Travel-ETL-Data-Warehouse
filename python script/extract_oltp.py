@@ -1,4 +1,4 @@
-import psycopg2
+﻿import psycopg2
 import pandas as pd
 import os
 from dotenv import load_dotenv

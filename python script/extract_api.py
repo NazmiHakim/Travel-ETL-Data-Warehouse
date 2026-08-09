@@ -1,4 +1,4 @@
-from amadeus import Client, ResponseError
+﻿from amadeus import Client, ResponseError
 import json
 import os
 from dotenv import load_dotenv

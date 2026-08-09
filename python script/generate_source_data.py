@@ -1,4 +1,4 @@
-import os
+﻿import os
 import random
 import pandas as pd
 from datetime import datetime, timedelta
@@ -47,14 +47,14 @@ CARRIERS = ["DL", "AA", "UA", "WN", "AS", "B6", "F9", "NK"]
 # Legacy carriers generally have better on-time performance than budget carriers
 # ---------------------------------------------------------------------------
 CARRIER_DELAY_PROFILE: dict[str, tuple[int, int]] = {
-    "DL": (-10, 45),   # Delta — best OTP
-    "AS": (-10, 50),   # Alaska — second best OTP
+    "DL": (-10, 45),   # Delta -- best OTP
+    "AS": (-10, 50),   # Alaska -- second best OTP
     "UA": (-10, 60),   # United
     "AA": (-10, 65),   # American
     "B6": (-10, 75),   # JetBlue
     "WN": (-5,  80),   # Southwest
     "F9": (-5,  100),  # Frontier
-    "NK": (-5,  120),  # Spirit — worst OTP
+    "NK": (-5,  120),  # Spirit -- worst OTP
 }
 
 
@@ -63,7 +63,7 @@ def generate_airports_csv() -> None:
     print(f"Generating airports.csv...")
     df = pd.DataFrame(AIRPORTS_DATA)
     df.to_csv(AIRPORTS_FILE, index=False)
-    print(f"SUCCESS: {AIRPORTS_FILE} — {len(df)} airports.")
+    print(f"SUCCESS: {AIRPORTS_FILE} -- {len(df)} airports.")
 
 
 def generate_flights_csv(num_records: int = 50_000) -> None:
@@ -111,7 +111,7 @@ def generate_flights_csv(num_records: int = 50_000) -> None:
 
     df = pd.DataFrame(records)
     df.to_csv(FLIGHTS_FILE, index=False)
-    print(f"SUCCESS: {FLIGHTS_FILE} — {len(df):,} flight records.")
+    print(f"SUCCESS: {FLIGHTS_FILE} -- {len(df):,} flight records.")
 
 
 # ---------------------------------------------------------------------------
@@ -124,12 +124,12 @@ REVIEW_TEMPLATES = [
     # Delay complaints
     ("Delay", "Flight {carrier} from {origin} to {dest} on {date} was delayed by {mins} minutes. Missed my connecting flight. Very disappointing.", 1),
     ("Delay", "Significant departure delay on {carrier}. Spent {mins} minutes stuck at the gate with no updates from staff.", 2),
-    ("Delay", "{carrier} flight delayed again — {mins} minutes this time. Third delay this month. Completely unreliable.", 1),
+    ("Delay", "{carrier} flight delayed again -- {mins} minutes this time. Third delay this month. Completely unreliable.", 1),
     ("Delay", "Minor {mins}-minute delay on {carrier} but staff kept us informed throughout. Not ideal but acceptable.", 3),
 
     # Baggage complaints
     ("Baggage", "Landed in {dest} with {carrier} but my checked luggage was lost. Took 2 days to recover my bags.", 1),
-    ("Baggage", "Careless handling on {carrier} — my suitcase arrived damaged with a broken wheel.", 2),
+    ("Baggage", "Careless handling on {carrier} -- my suitcase arrived damaged with a broken wheel.", 2),
     ("Baggage", "Lost baggage claim with {carrier} was incredibly slow. Waited 90 minutes at carousel before reporting the loss.", 2),
     ("Baggage", "Bags arrived intact and on-time with {carrier}. No issues at all with baggage handling.", 5),
 
@@ -143,14 +143,14 @@ REVIEW_TEMPLATES = [
     # Pricing reviews
     ("Pricing", "Ticket prices for {carrier} to {dest} are way too high for basic economy with no baggage allowance.", 2),
     ("Pricing", "Got a fantastic deal on {carrier}! Smooth booking, comfortable seat, great value for money.", 5),
-    ("Pricing", "{carrier} charges extra for everything. Seat selection, baggage, drinks — the base fare is misleading.", 1),
+    ("Pricing", "{carrier} charges extra for everything. Seat selection, baggage, drinks -- the base fare is misleading.", 1),
     ("Pricing", "Fair price for what you get with {carrier}. Budget airline but reasonable comfort.", 3),
 
     # Positive / neutral overall reviews
     ("None", "On-time departure and early arrival in {dest} with {carrier}. Smooth flight with no issues.", 5),
     ("None", "Decent flight with {carrier}. Clean aircraft and punctual landing.", 4),
     ("None", "Comfortable seats and good legroom on {carrier}. Would fly again.", 5),
-    ("None", "{carrier} delivered exactly what I expected — a reliable flight from {origin} to {dest}.", 4),
+    ("None", "{carrier} delivered exactly what I expected -- a reliable flight from {origin} to {dest}.", 4),
     ("None", "Nothing exceptional about {carrier} but a solid, reliable flight overall.", 3),
 ]
 
@@ -205,10 +205,11 @@ def generate_customer_reviews_csv(num_records: int = 2_000) -> None:
 
     df = pd.DataFrame(records)
     df.to_csv(REVIEWS_FILE, index=False)
-    print(f"SUCCESS: {REVIEWS_FILE} — {len(df):,} customer review records.")
+    print(f"SUCCESS: {REVIEWS_FILE} -- {len(df):,} customer review records.")
 
 
 if __name__ == "__main__":
     generate_airports_csv()
     generate_flights_csv(num_records=50_000)
     generate_customer_reviews_csv(num_records=2_000)
+
