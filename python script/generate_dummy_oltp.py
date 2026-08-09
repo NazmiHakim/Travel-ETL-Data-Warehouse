@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 DB_HOST = "localhost"
 DB_PORT = "5432"
 DB_NAME = "db_oltp"
-DB_USER = "" 
-DB_PASS = ""
+DB_USER = "postgres" 
+DB_PASS = "growtopia123"
 
 fake = Faker()
 

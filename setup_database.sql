@@ -53,7 +53,18 @@ CREATE TABLE Fact_Flights (
     total_revenue DECIMAL(10, 2)
 );
 
--- 5. (PENTING) Isi Dim_Date dengan data
+-- 5. Tabel Fakta Feedback Pelanggan (AI Enriched)
+CREATE TABLE Fact_Customer_Feedback (
+    feedback_key SERIAL PRIMARY KEY,
+    date_key INT REFERENCES Dim_Date(date_key),
+    airline_key INT REFERENCES Dim_Airline(airline_key),
+    sentiment VARCHAR(20),
+    complaint_category VARCHAR(50),
+    satisfaction_score INT,
+    review_text TEXT
+);
+
+-- 6. (PENTING) Isi Dim_Date dengan data
 INSERT INTO Dim_Date (full_date, day_of_week, day_of_month, month, quarter, year)
 SELECT
     CAST(t.tanggal AS DATE) AS full_date,
@@ -65,3 +76,4 @@ SELECT
 FROM
     generate_series('2020-01-01'::timestamp, '2025-12-31'::timestamp, '1 day'::interval) AS t(tanggal)
 ON CONFLICT (full_date) DO NOTHING;
+

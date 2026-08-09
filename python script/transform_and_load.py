@@ -3,13 +3,13 @@ from sqlalchemy import create_engine, text
 import os
 import sys 
 
-BASE_DATA_PATH = r""
+BASE_DATA_PATH = "data"
 
 DB_HOST = "localhost"
 DB_PORT = "5432"
 DB_NAME = "db_dwh"  
-DB_USER = ""
-DB_PASS = ""
+DB_USER = "postgres"
+DB_PASS = "growtopia123"
 
 AIRPORTS_FILE = os.path.join(BASE_DATA_PATH, "airports.csv")
 FLIGHTS_FILE = os.path.join(BASE_DATA_PATH, "flights.csv")
@@ -130,6 +130,25 @@ def load_fact_flights():
             total_revenue=('revenue', 'sum')
         ).reset_index()
 
+        print("Membaca operational flight delays dari flights.csv...")
+        df_flights = pd.read_csv(FLIGHTS_FILE)
+        df_flights['FlightDate'] = pd.to_datetime(df_flights['FlightDate']).dt.date
+        df_flights_agg = df_flights.groupby(
+            ['FlightDate', 'Carrier', 'OriginAirportID', 'DestAirportID']
+        ).agg(
+            departure_delay=('DepDelay', 'mean'),
+            arrival_delay=('ArrDelay', 'mean')
+        ).reset_index()
+
+        df_agg = pd.merge(
+            df_agg, df_flights_agg,
+            left_on=['date_only', 'flight_carrier_code', 'flight_origin_id', 'flight_dest_id'],
+            right_on=['FlightDate', 'Carrier', 'OriginAirportID', 'DestAirportID'],
+            how='left'
+        )
+        df_agg['departure_delay'] = df_agg['departure_delay'].fillna(0).round().astype(int)
+        df_agg['arrival_delay'] = df_agg['arrival_delay'].fillna(0).round().astype(int)
+
         print("Melakukan Key Lookup (menukar kode bisnis dengan key DWH)...")
         
         df_fact = pd.merge(df_agg, dim_date, left_on='date_only', right_on='full_date', how='inner')
@@ -141,13 +160,11 @@ def load_fact_flights():
         dim_airport_dest = dim_airport.rename(columns={'airport_id_key': 'dest_airport_key', 'airport_id': 'dest_id_lookup'})
         df_fact = pd.merge(df_fact, dim_airport_dest, left_on='flight_dest_id', right_on='dest_id_lookup', how='inner')
 
-        df_fact['departure_delay'] = 0
-        df_fact['arrival_delay'] = 0
-        
         final_columns = [
             'date_key', 'airline_key', 'origin_airport_key', 'dest_airport_key',
             'departure_delay', 'arrival_delay', 'total_passengers', 'total_revenue'
         ]
+
         
         df_final_fact = df_fact[final_columns]
         
