@@ -1,4 +1,4 @@
-﻿import os
+import os
 import re
 import hashlib
 import pandas as pd
@@ -21,10 +21,10 @@ def _wm(keywords: list, text: str) -> bool:
     return False
 
 # ---------------------------------------------------------------------------
-# Keyword Dictionaries â€” used for both intent routing and analytical guard
+# Keyword Dictionaries -- used for both intent routing and analytical guard
 # ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
-# Keyword Dictionaries â€” enriched for intent routing and analytical guard
+# Keyword Dictionaries -- enriched for intent routing and analytical guard
 # ---------------------------------------------------------------------------
 REVENUE_KEYWORDS  = [
     "richest", "rich", "wealthiest", "wealthy", "revenue", "money",
@@ -108,7 +108,7 @@ def is_analytical_query(user_question: str) -> bool:
 
 # ---------------------------------------------------------------------------
 # Dynamic NLP SQL Generator
-# Receives ONLY the user question â€” never the full system prompt.
+# Receives ONLY the user question -- never the full system prompt.
 # ---------------------------------------------------------------------------
 _GLOBAL_RAG_ENGINE = DataDictionaryVectorRAG()
 
@@ -138,7 +138,7 @@ def generate_dynamic_sql(user_question: str) -> str:
     limit = 10  # default: return top 10 for unspecified requests
     m = re.search(r"\b(?:top|limit)\s+(\d+)\b", p)
     if no_limit:
-        limit = 50   # effectively "show all" â€” use a generous cap to avoid unbounded queries
+        limit = 50   # effectively "show all" -- use a generous cap to avoid unbounded queries
     elif m:
         limit = int(m.group(1))
     elif _wm(["10"], p) and _wm(["airline", "airlines", "carrier", "carriers", "city", "cities", "route", "routes"], p):
@@ -181,7 +181,7 @@ def generate_dynamic_sql(user_question: str) -> str:
 
     # --- Domain 0: Composite Airline Performance (v_airline_performance VIEW) ---
     # Triggered when the query contains performance/ranking/overall keywords AND
-    # references airlines â€” routes to the composite performance view directly.
+    # references airlines -- routes to the composite performance view directly.
     is_performance_query = _wm(PERFORMANCE_KEYWORDS, p) and (
         _wm(["airline", "airlines", "carrier", "carriers"], p)
         or not _wm(LOCATION_KEYWORDS + ["route", "city", "cities", "destination"], p)
@@ -384,7 +384,7 @@ def generate_dynamic_sql(user_question: str) -> str:
 def call_llm(full_prompt: str, user_question: str, api_key: str = None) -> str:
     """
     Calls Gemini API when a key is available.
-    Fallback: generate_dynamic_sql(user_question) â€” NOT the full prompt.
+    Fallback: generate_dynamic_sql(user_question) -- NOT the full prompt.
     """
     key = api_key or os.getenv("GEMINI_API_KEY")
     if key:
@@ -485,7 +485,7 @@ class TextToSQLAgent:
         ck = _cache_key(user_question)
         if use_cache and ck in _query_cache:
             cached = _query_cache[ck].copy()
-            cached["logs"] = [f"âš¡ Cache hit â€” returning stored result for: '{user_question}'"]
+            cached["logs"] = [f"âš¡ Cache hit -- returning stored result for: '{user_question}'"]
             cached["from_cache"] = True
             return cached
 
@@ -533,10 +533,10 @@ RULES:
             if success:
                 result_df = result_df_or_err
                 logs.append(
-                    f"âœ… SUCCESS â€” {len(result_df)} row(s) in {elapsed:.3f}s."
+                    f"âœ… SUCCESS -- {len(result_df)} row(s) in {elapsed:.3f}s."
                 )
                 if len(result_df) == 0 and attempt < max_retries:
-                    logs.append("âš ï¸ 0 rows â€” relaxing filter conditions...")
+                    logs.append("âš ï¸ 0 rows -- relaxing filter conditions...")
                     current_prompt += (
                         f"\n\nAttempt {attempt}: 0 rows for:\n{sql_query}\n"
                         "Relax any date/filter conditions and regenerate."
@@ -545,9 +545,9 @@ RULES:
                 break
             else:
                 error_msg = str(result_df_or_err)
-                # Break immediately for connectivity errors â€” SQL changes cannot fix these
+                # Break immediately for connectivity errors -- SQL changes cannot fix these
                 if any(k in error_msg for k in ["Connection Refused", "not reachable", "OperationalError"]):
-                    logs.append(f"ðŸ”´ DB CONNECTION ERROR â€” aborting retries.")
+                    logs.append(f"ðŸ”´ DB CONNECTION ERROR -- aborting retries.")
                     break
                 logs.append(f"âŒ Error: {error_msg}")
                 logs.append("ðŸ” Triggering Reflection & Correction Loop...")
@@ -587,7 +587,7 @@ RULES:
 
     def _synthesize_answer(self, user_question: str, df: pd.DataFrame) -> str:
         n = len(df)
-        summary = "### ðŸ“Š Analytical Summary\n"
+        summary = "### Analytical Summary\n"
         summary += f"Found **{n} record(s)** for: *\"{user_question}\"*.\n\n"
         numeric_cols = df.select_dtypes(include=["number"]).columns
         if len(numeric_cols) > 0:
