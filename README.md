@@ -1,4 +1,4 @@
-# 🚀 TravelNusantara - End-to-End Flight ETL & Neuro-Symbolic AI Data Analyst
+# TravelNusantara - End-to-End Flight ETL & Neuro-Symbolic AI Data Analyst
 
 This repository contains an enterprise-grade, end-to-end Data Warehouse & Neuro-Symbolic AI Analytics implementation for a fictional Online Travel Agent (OTA) named **TravelNusantara**.
 
@@ -8,14 +8,14 @@ The project combines a robust Data Warehouse architecture (**Kimball Star Schema
 
 ---
 
-## 📑 Master Documentation Reference
+## Master Documentation Reference
 > [!NOTE]
 > For an exhaustive, phase-by-phase technical breakdown of the entire ETL evolution, mathematical formulations, and benchmarking methodology, please refer to:  
 > 🔗 **[MASTER_PROJECT_DOCUMENTATION.md](MASTER_PROJECT_DOCUMENTATION.md)**
 
 ---
 
-## 🎯 Core Capabilities & Analytical Tiers
+## Core Capabilities & Analytical Tiers
 
 ### 1. Traditional BI & Descriptive Analytics
 * **Route & Destination Rankings:** Identifies top-performing flight routes and origin/destination cities by passenger volume and total revenue.
@@ -45,14 +45,14 @@ The system was rigorously validated through a massive-scale white-box stress tes
 | **Input-Output Assertion Suite** | 10,000 Unique Tests | 10,000 Assertions | **732.9 QPS** | **100.00% Security Pass** |
 | ├── *Metric Selection Matching* | 5,000 Unique Prompts | 5,000 Matched | 639.2 QPS | 5,000 / 5,000 (100.0%) |
 | └── *SQL Injection Defense* | 1,250 Payloads | 1,250 Blocked | Instant | **1,250 / 1,250 (100% Blocked)** |
-| **🗄️ PostgreSQL Live Execution** | 500 Sample Batch | 500 Live DB Runs | 100.0% | **500 / 500 (100.0%)** |
+| **PostgreSQL Live Execution** | 500 Sample Batch | 500 Live DB Runs | 100.0% | **500 / 500 (100.0%)** |
 
 > [!IMPORTANT]
 > **Adversarial & Security Verification:** Tested against 25,000+ malicious SQL injection payloads (`DROP TABLE`, `'; DELETE FROM`, `UNION SELECT`, `<script>`). **100% of destructive payloads were blocked**, enforcing strictly read-only `SELECT` query generation.
 
 ---
 
-## 📸 Interactive Web UI Preview (Streamlit)
+## Interactive Web UI Preview (Streamlit)
 
 Launch the interactive AI Data Analyst app using Streamlit:
 
@@ -62,7 +62,7 @@ streamlit run app.py
 
 ---
 
-## 🏛️ Medallion System Architecture
+## Medallion System Architecture
 
 ```
 +-----------------------------------------------------------------------------------+
@@ -75,17 +75,17 @@ streamlit run app.py
 +-----------------------------------------------------------------------------------+
 |                             MEDALLION ARCHITECTURE                                |
 |                                                                                   |
-|  🥉 BRONZE LAYER (Raw Landing Zone)                                               |
+|    BRONZE LAYER (Raw Landing Zone)                                               |
 |     - Raw CSV files (data/airports.csv, data/flights.csv)                         |
 |     - Raw Customer Reviews (data/bronze/customer_reviews.csv)                     |
 |     - Raw OLTP Extract (data/bronze/bronze_bookings.csv)                          |
 |     - Raw API JSON Extracts (data/bronze/bronze_api_*.json)                       |
 |                                                                                   |
-|  🥈 SILVER LAYER (Conformed, Cleansed & AI Enriched)                              |
+|    SILVER LAYER (Conformed, Cleansed & AI Enriched)                              |
 |     - In-Memory Cleaning, Deduplication & Code Mappings (transform_and_load.py)   |
 |     - AI Review Text Analysis: Sentiment & Category Extraction (ai_enrich_reviews) |
 |                                                                                   |
-|  🥇 GOLD LAYER (Star Schema Data Warehouse in db_dwh)                             |
+|    GOLD LAYER (Star Schema Data Warehouse in db_dwh)                             |
 |     - Dim_Airport, Dim_Airline, Dim_Date                                         |
 |     - Fact_Flights (Operational Delays + Revenue Aggregations)                    |
 |     - Fact_Customer_Feedback (AI-Enriched Sentiment & Complaint Categories)       |
@@ -103,7 +103,7 @@ streamlit run app.py
 
 ---
 
-## 🗄️ Database Schemas & Data Dictionary
+## Database Schemas & Data Dictionary
 
 ### 1. OLTP Database (`db_oltp`)
 * **Table: `Bookings`** — `booking_id (PK)`, `booking_date`, `user_id`, `flight_carrier_code`, `flight_origin_id`, `flight_dest_id`, `passengers`, `revenue`.
@@ -143,7 +143,7 @@ streamlit run app.py
 
 ---
 
-## 🤖 Neuro-Symbolic Agent Engine Architecture
+##  Neuro-Symbolic Agent Engine Architecture
 
 ```
                                 +-----------------------------------+
@@ -192,7 +192,7 @@ streamlit run app.py
 
 ---
 
-## 🚀 Complete Zero-to-Hero Execution Tutorial
+## Complete Zero-to-Hero Execution Tutorial
 
 Follow this step-by-step guide to run the entire system from absolute scratch on a fresh machine.
 
@@ -305,7 +305,7 @@ python test_whitebox_100k.py
 
 ---
 
-## 📁 Repository Directory Structure
+## Repository Directory Structure
 
 ```text
 .
