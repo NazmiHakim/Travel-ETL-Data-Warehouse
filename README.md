@@ -162,6 +162,42 @@ The system combines a Kimball Star Schema data warehouse (Medallion Architecture
 
 ---
 
+### Deep-Dive Explanation: Mode B (Local / Offline Agent Engine)
+
+Mode B operates as an offline, zero-cost, and ultra-low latency (~700+ QPS) data analyst engine inside the `agent/` directory. The engine processes natural language user prompts locally on CPU resources without sending database schema information or query payloads to third-party cloud APIs.
+
+#### 1. Core Component Breakdown
+
+* **Vector RAG Retriever (`agent/rag_retriever.py`)**
+  * **Function (S-V-O-M):** The local retriever (**Subject**) evaluates (**Verb**) prompt term vectors (**Object**) against domain dictionaries using TF-IDF cosine similarity ($\tau = 0.12$) to route queries to the correct data warehouse tables (**Modifier**).
+  * **Domain Grounding:** Maps lexical variations (e.g., *"richest"*, *"lateness"*, *"bad reviews"*, *"busiest"*) to target dimensional tables (`dim_airline`, `dim_airport`, `fact_flights`, `fact_customer_feedback`).
+
+* **Dynamic Schema Inspector (`agent/schema_inspector.py`)**
+  * **Function (S-V-O-M):** The schema inspector (**Subject**) probes (**Verb**) PostgreSQL `information_schema.columns` (**Object**) at runtime to retrieve exact column names, data types, and primary-foreign key relationships (**Modifier**).
+  * **Hallucination Prevention:** Fetches real-time database schema information dynamically to eliminate invalid table and column references during query generation.
+
+* **Deterministic SQL Generator (`agent/sql_agent.py`)**
+  * **Function (S-V-O-M):** The local generator (**Subject**) constructs (**Verb**) executable PostgreSQL `SELECT` queries (**Object**) using regex intent parsers and rule-based SQL templates (**Modifier**).
+  * **Query Capabilities:** Assembles multi-table `JOIN` statements, date filters (`dd.year = 2024`), aggregation functions (`AVG`, `COUNT`, `SUM`), and `ORDER BY / LIMIT` clauses.
+
+* **Automated Self-Correction Reflection Loop (`agent/sql_agent.py` & `agent/db_tools.py`)**
+  * **Function (S-V-O-M):** The reflection loop (**Subject**) intercepts (**Verb**) database execution exceptions (**O**) inside a read-only PostgreSQL sandbox to automatically refine and retry malformed SQL queries up to 3 times (**Modifier**).
+  * **Error Correction:** Analyzes raw PostgreSQL error tracebacks and applies structural SQL fixes automatically to maintain zero-fail execution.
+
+---
+
+#### 2. Mode B Step-by-Step Execution Workflow
+
+1. **Prompt Tokenization & Ingestion:** The intent router ingests the natural language user prompt and normalizes string tokens.
+2. **Vector Similarity Calculation:** The RAG retriever computes cosine similarity scores across domain vectors (`flights`, `reviews`, `airlines`, `airports`).
+3. **Deterministic Route Selection:** The engine activates Mode B when domain similarity scores exceed $\tau = 0.12$ or match known analytical keywords.
+4. **Live Schema Ingestion:** The schema inspector provides active table column definitions and foreign key join conditions.
+5. **SQL Query Assembly:** The local generator builds a parameterized, read-only SQL query with explicit column aliases.
+6. **Sandboxed Execution & Reflection:** The database tool executes the query against `db_dwh`, triggering the 3-cycle reflection loop if PostgreSQL returns an error trace.
+7. **Visualization & Response Rendering:** The Streamlit application renders the query output as interactive Plotly charts and markdown summary tables.
+
+---
+
 ## Execution Guide
 
 Follow these steps to set up and run the project locally.
