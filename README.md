@@ -1,64 +1,34 @@
-# TravelNusantara - End-to-End Flight ETL & Neuro-Symbolic AI Data Analyst
+# TravelNusantara: End-to-End Flight ETL & Neuro-Symbolic AI Data Analyst
 
-This repository contains an enterprise-grade, end-to-end Data Warehouse & Neuro-Symbolic AI Analytics implementation for a fictional Online Travel Agent (OTA) named **TravelNusantara**.
+This repository implements a Data Warehouse and Neuro-Symbolic AI Analytics engine for **TravelNusantara**, a fictional Online Travel Agency (OTA).
 
-The project combines a robust Data Warehouse architecture (**Kimball Star Schema** + **Medallion Architecture**) with a high-performance, **Neuro-Symbolic Dual-Agent System**:
-1. **AI-Powered Silver Layer ETL Enrichment:** Automated sentiment analysis and complaint category extraction from unstructured customer text reviews (`ai_enrich_reviews.py`).
-2. **Neuro-Symbolic Data Analyst Agent:** Interactive natural language analytics engine supporting **Vector-RAG Domain Scoring**, **Live Schema Introspection**, sub-millisecond local routing (**~700+ QPS**), and a **Self-Correction Reflection Loop**.
+The system combines a Kimball Star Schema data warehouse (Medallion Architecture) with a dual-mode Neuro-Symbolic agent:
+1. **Silver Layer AI ETL Enrichment:** `ai_enrich_reviews.py` extracts sentiment scores and complaint categories from raw customer text reviews.
+2. **Neuro-Symbolic Data Analyst Agent:** An interactive Text-to-SQL engine uses Vector-RAG domain scoring, live schema introspection, local query routing (~700+ QPS), and an automated self-correction reflection loop.
 
 ---
 
-## Master Documentation Reference
+## Technical Documentation Reference
 > [!NOTE]
-> For an exhaustive, phase-by-phase technical breakdown of the entire ETL evolution, mathematical formulations, and benchmarking methodology, please refer to:  
-> 🔗 **[MASTER_PROJECT_DOCUMENTATION.md](MASTER_PROJECT_DOCUMENTATION.md)**
+> Read **[MASTER_PROJECT_DOCUMENTATION.md](MASTER_PROJECT_DOCUMENTATION.md)** for phase-by-phase explanations, mathematical formulas, and benchmarking data.
 
 ---
 
-## Core Capabilities & Analytical Tiers
+## System Capabilities
 
-### 1. Traditional BI & Descriptive Analytics
-* **Route & Destination Rankings:** Identifies top-performing flight routes and origin/destination cities by passenger volume and total revenue.
-* **Carrier Performance & Operational Delay Analytics:** Aggregates real operational delay metrics (`avg_departure_delay`, `avg_arrival_delay`) and revenue performance across airlines.
-* **Seasonal Demand Trends:** Analyzes volume fluctuations across months, quarters, and days of the week.
-* **Power BI Dashboard Integration:** Includes interactive dashboard report (`Data Warehouse Visualization.pbix`) for executive reporting.
+### 1. Descriptive Analytics and Business Intelligence
+* **Route and Destination Analysis:** Ranks flight routes and cities by passenger volume and gross revenue.
+* **Carrier Performance and Delay Metrics:** Computes average departure delays, arrival delays, and revenue per airline.
+* **Seasonal Demand Patterns:** Tracks booking trends across months, quarters, and days of the week.
+* **Executive Dashboards:** Includes a Power BI report file (`Data Warehouse Visualization.pbix`) for visual data exploration.
 
-### 2. AI-Powered Analytics & Neuro-Symbolic Automation
-* **Unstructured Feedback Enrichment (AI ETL):** Uses LLM processing to transform raw customer review text into structured metrics (`sentiment`, `complaint_category`, `satisfaction_score`).
-* **Neuro-Symbolic Text-to-SQL Engine:** 
-  * **Mode A (Neural Gemini Reasoning):** Leverages Google Gemini 2.5 Flash API for complex, multi-nested natural language questions.
-  * **Mode B (Deterministic Local NLP & Vector RAG Engine):** Operates locally using regex pattern rules, schema inspection, and TF-IDF Cosine Similarity for **sub-millisecond, zero-cost query processing**.
-* **Vector RAG Domain Scoring:** Vectorizes user prompts to compute TF-IDF Cosine Similarity against domain knowledge vectors, eliminating brittle keyword failures.
-* **Self-Correction Reflection Loop:** Catches PostgreSQL execution errors, feeds error traces back to the reflection loop, and automatically corrects the SQL statement (up to 3 retries).
-
----
-
-## ⚡ High-Throughput White-Box Stress Test & Security Benchmarks
-
-The system was rigorously validated through a massive-scale white-box stress testing framework (`test_whitebox_100k.py` and `test_whitebox_5k.py`):
-
-| Benchmark Category | Target Scope | Verified Success | Throughput (QPS) | Pass / Resilience Rate |
-|---|---|---|---|---|
-| **Ultra White-Box Suite** | 200,000 Unique Queries | 200,000 Tests | **316.2 QPS** | **100.00%** |
-| ├── *Happy Path Analytical* | 100,000 Unique Prompts | 100,000 Passed | 320.4 QPS | 100,000 / 100,000 (100%) |
-| └── *Bad / Fail Path Resilience* | 100,000 Unique Prompts | 100,000 Handled | 312.2 QPS | 100,000 / 100,000 (100%) |
-| **Input-Output Assertion Suite** | 10,000 Unique Tests | 10,000 Assertions | **732.9 QPS** | **100.00% Security Pass** |
-| ├── *Metric Selection Matching* | 5,000 Unique Prompts | 5,000 Matched | 639.2 QPS | 5,000 / 5,000 (100.0%) |
-| └── *SQL Injection Defense* | 1,250 Payloads | 1,250 Blocked | Instant | **1,250 / 1,250 (100% Blocked)** |
-| **PostgreSQL Live Execution** | 500 Sample Batch | 500 Live DB Runs | 100.0% | **500 / 500 (100.0%)** |
-
-> [!IMPORTANT]
-> **Adversarial & Security Verification:** Tested against 25,000+ malicious SQL injection payloads (`DROP TABLE`, `'; DELETE FROM`, `UNION SELECT`, `<script>`). **100% of destructive payloads were blocked**, enforcing strictly read-only `SELECT` query generation.
-
----
-
-## Interactive Web UI Preview (Streamlit)
-
-Launch the interactive AI Data Analyst app using Streamlit:
-
-```bash
-streamlit run app.py
-```
+### 2. Neuro-Symbolic AI Automation
+* **Unstructured Text Enrichment:** Converts raw customer reviews into structured metrics (`sentiment`, `complaint_category`, `satisfaction_score`).
+* **Dual-Mode Text-to-SQL Processing:** 
+  * **Mode A (Neural LLM Reasoning):** Queries the Google Gemini 2.5 Flash API to resolve complex natural language questions.
+  * **Mode B (Local Deterministic Engine):** Uses regex matching, dynamic schema checks, and TF-IDF cosine similarity to generate SQL locally with zero API latency.
+* **Vector RAG Domain Scoring:** Computes TF-IDF vector similarity between user queries and target data domains to avoid keyword lookup failures.
+* **Self-Correction Reflection Loop:** Intercepts PostgreSQL execution errors and feeds the error trace back to the generator for automated retries (up to 3 cycles).
 
 ---
 
@@ -75,17 +45,17 @@ streamlit run app.py
 +-----------------------------------------------------------------------------------+
 |                             MEDALLION ARCHITECTURE                                |
 |                                                                                   |
-|    BRONZE LAYER (Raw Landing Zone)                                               |
+|    BRONZE LAYER (Raw Landing Zone)                                                |
 |     - Raw CSV files (data/airports.csv, data/flights.csv)                         |
 |     - Raw Customer Reviews (data/bronze/customer_reviews.csv)                     |
 |     - Raw OLTP Extract (data/bronze/bronze_bookings.csv)                          |
 |     - Raw API JSON Extracts (data/bronze/bronze_api_*.json)                       |
 |                                                                                   |
-|    SILVER LAYER (Conformed, Cleansed & AI Enriched)                              |
+|    SILVER LAYER (Conformed, Cleansed & AI Enriched)                               |
 |     - In-Memory Cleaning, Deduplication & Code Mappings (transform_and_load.py)   |
 |     - AI Review Text Analysis: Sentiment & Category Extraction (ai_enrich_reviews) |
 |                                                                                   |
-|    GOLD LAYER (Star Schema Data Warehouse in db_dwh)                             |
+|    GOLD LAYER (Star Schema Data Warehouse in db_dwh)                              |
 |     - Dim_Airport, Dim_Airline, Dim_Date                                         |
 |     - Fact_Flights (Operational Delays + Revenue Aggregations)                    |
 |     - Fact_Customer_Feedback (AI-Enriched Sentiment & Complaint Categories)       |
@@ -143,7 +113,7 @@ streamlit run app.py
 
 ---
 
-##  Neuro-Symbolic Agent Engine Architecture
+## Neuro-Symbolic Agent Engine Architecture
 
 ```
                                 +-----------------------------------+
@@ -192,144 +162,128 @@ streamlit run app.py
 
 ---
 
-## Guide
+## Execution Guide
 
-Follow this step-by-step guide to run this project.
+Follow these steps to set up and run the project locally.
 
 ---
 
-### Step 1: Prerequisites & Environment Setup
+### Step 1: Environment Setup
 
-#### 1. System Requirements
-- **Python**: 3.8 or higher installed and added to PATH.
-- **PostgreSQL**: Local PostgreSQL server (v14+) running on port `5432`.
+#### 1. Prerequisites
+- **Python**: Version 3.8 or higher.
+- **PostgreSQL**: Version 14 or higher running on port `5432`.
 
-#### 2. Virtual Environment Setup (Recommended)
-Open your terminal inside the project directory:
+#### 2. Virtual Environment Setup
+Run the following commands in your project directory:
+
 ```bash
-# Create Python virtual environment
+# Create virtual environment
 python -m venv venv
 
-# Activate Virtual Environment
+# Activate virtual environment
 # Windows PowerShell:
 .\venv\Scripts\Activate.ps1
 # macOS / Linux:
 source venv/bin/activate
 
-# Install all required Python packages
+# Install dependencies
 pip install pandas sqlalchemy psycopg2-binary google-genai python-dotenv Faker streamlit plotly scikit-learn
 ```
 
-#### 3. Database Initialization (PostgreSQL)
-Open **pgAdmin** or your terminal using `psql` to create the target databases:
+#### 3. Database Initialization
+Create the target databases using `psql` or pgAdmin:
 
 ```sql
--- Run inside PostgreSQL (psql / pgAdmin Query Tool)
 CREATE DATABASE db_oltp;
 CREATE DATABASE db_dwh;
 ```
 
-Now execute the DDL table schema script `setup_database.sql` against both databases:
+Execute `setup_database.sql` against both databases:
 ```bash
-# In Windows Command Prompt or PowerShell:
 psql -U postgres -d db_oltp -f setup_database.sql
 psql -U postgres -d db_dwh -f setup_database.sql
 ```
 
-#### 4. Configure Environment Variables (`.env`)
-Create a file named `.env` in the root folder of the project with the following parameters:
+#### 4. Environment Variables Configuration
+Create a `.env` file in the root directory:
 
 ```env
-# Database Credentials
+# Database Configuration
 DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
 DB_PASS=your_postgres_password
 
-# Optional: Google Gemini API Key
-# If omitted or invalid, the Agent automatically runs in Mode B (Local Deterministic NLP Engine)
+# Gemini API Key (Optional: system defaults to Mode B if omitted)
 GEMINI_API_KEY=your_gemini_api_key_here
 ```
 
 ---
 
-### Step 2: Complete Pipeline Execution Sequence
+### Step 2: Pipeline Execution
 
-Execute the ETL scripts in exact numerical order to ingest, extract, transform, and enrich the Data Warehouse:
+Run the scripts in sequential order to execute the ETL pipeline:
 
 ```bash
-# 1. Generate Synthetic Source Files (airports.csv, flights.csv, customer_reviews.csv)
+# 1. Generate synthetic source CSV files
 python "python script/generate_source_data.py"
 
-# 2. Populate OLTP Database (Generate 5,000 transaction records in db_oltp.Bookings)
+# 2. Populate OLTP database with 5,000 records
 python "python script/generate_dummy_oltp.py"
 
-# 3. Extract OLTP Data to Bronze Layer (data/bronze/bronze_bookings.csv)
+# 3. Extract OLTP data into the Bronze layer
 python "python script/extract_oltp.py"
 
-# 4. Transform & Load Gold Data Warehouse (Cleans, aggregates & loads db_dwh.Fact_Flights + Dimensions)
+# 4. Transform and load data into the Gold Data Warehouse
 python "python script/transform_and_load.py"
 
-# 5. Run AI Review Enrichment (Parses unstructured text into db_dwh.Fact_Customer_Feedback)
+# 5. Run AI review enrichment
 python "python script/ai_enrich_reviews.py"
 ```
 
 ---
 
-### Step 3: Launch Interactive Streamlit AI Analyst Application
+### Step 3: Launch Streamlit Application
 
-Launch the Streamlit web app:
+Start the interactive web application:
 
 ```bash
 streamlit run app.py
 ```
 
-Your default web browser will automatically open to `http://localhost:8501`. You can now type natural language questions like:
-- *"Which airline has the highest total revenue in 2024?"*
-- *"Show top 5 destination cities by passenger volume"*
-- *"Which airline has the worst customer reviews and average departure delays?"*
+The app will open automatically at `http://localhost:8501`. You can test sample questions such as:
+- *"Which airline generated the highest total revenue in 2024?"*
+- *"Show the top 5 destination cities by passenger volume."*
+- *"Which airline received the lowest average rating and highest departure delays?"*
 
 ---
 
-### Step 4: Run Ultra-Scale White-Box Benchmarks
-
-To stress test the system resilience, security, and query accuracy:
-
-```bash
-# Run 10,000 Input-to-Output SQL Assertion Test Suite (Fast: ~13 seconds)
-python test_whitebox_5k.py
-
-# Run 200,000-Query Ultra-Scale High-Throughput Stress Test (~10 minutes)
-python test_whitebox_100k.py
-```
-
----
-
-## Repository Directory Structure
+## Directory Structure
 
 ```text
 .
-├── app.py                             # Interactive Streamlit Web UI for AI Analyst Agent
-├── setup_database.sql                 # DDL Script for db_oltp & db_dwh tables
-├── MASTER_PROJECT_DOCUMENTATION.md    # Master technical documentation & evolution guide
-├── Data Warehouse Visualization.pbix  # Power BI Dashboard report
-├── README.md                          # Repository overview & quick start
-├── test_whitebox_100k.py              # 200,000-Query Ultra-Scale White-Box Benchmark
-├── test_whitebox_5k.py                # 10,000-Case Input-to-Output SQL Assertion Suite
-├── agent/                             # Neuro-Symbolic AI Agent Engine
-│   ├── db_tools.py                    # Read-only database interface
-│   ├── schema_inspector.py            # Live PostgreSQL schema introspection
-│   ├── rag_retriever.py               # Vector RAG & TF-IDF similarity engine
-│   └── sql_agent.py                   # Hybrid Text-to-SQL Agent with Reflection Loop
-├── data/                              # Bronze & Source Data Directory
-│   ├── airports.csv                   # Airport reference master
+├── app.py                             # Interactive Streamlit Web UI
+├── setup_database.sql                 # DDL Script for db_oltp & db_dwh
+├── MASTER_PROJECT_DOCUMENTATION.md    # Technical documentation reference
+├── Data Warehouse Visualization.pbix  # Power BI Dashboard file
+├── README.md                          # Repository overview
+├── test_whitebox_100k.py              # 200,000-Query White-Box Benchmark
+├── test_whitebox_5k.py                # 10,000-Case SQL Assertion Suite
+├── agent/                             # AI Agent Module
+│   ├── db_tools.py                    # Database connection interface
+│   ├── schema_inspector.py            # Dynamic schema introspection
+│   ├── rag_retriever.py               # Vector RAG & similarity engine
+│   └── sql_agent.py                   # Text-to-SQL Agent with Reflection Loop
+├── data/                              # Source and Bronze Data Directory
+│   ├── airports.csv                   # Airport reference data
 │   ├── flights.csv                    # Operational flight data
-│   └── bronze/                        # Raw ingested datasets & customer reviews
-└── python script/                     # Pipeline execution scripts
+│   └── bronze/                        # Ingested datasets and text reviews
+└── python script/                     # Pipeline Execution Scripts
     ├── generate_source_data.py        # Synthetic dataset generator
-    ├── generate_dummy_oltp.py         # OLTP booking generator
+    ├── generate_dummy_oltp.py         # OLTP dataset generator
     ├── extract_oltp.py                # OLTP extraction script
     ├── extract_api.py                 # Amadeus API extraction script
-    ├── transform_and_load.py          # Main ETL script (Bronze -> Silver -> Gold)
-    └── ai_enrich_reviews.py           # AI ETL enrichment script for text reviews
+    ├── transform_and_load.py          # ETL transformation script
+    └── ai_enrich_reviews.py           # Text review enrichment script
 ```
