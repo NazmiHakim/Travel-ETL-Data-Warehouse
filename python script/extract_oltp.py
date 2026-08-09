@@ -1,12 +1,15 @@
 import psycopg2
 import pandas as pd
 import os
+from dotenv import load_dotenv
 
-DB_HOST = "localhost"
-DB_PORT = "5432"
-DB_NAME = "db_oltp"
-DB_USER = "postgres" 
-DB_PASS = "growtopia123"
+load_dotenv()
+
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_NAME = os.getenv("DB_NAME_OLTP", os.getenv("DB_NAME", "db_oltp"))
+DB_USER = os.getenv("DB_USER", "postgres") 
+DB_PASS = os.getenv("DB_PASS", "your_postgres_password")
 
 BRONZE_PATH = os.path.join("data", "bronze")
 os.makedirs(BRONZE_PATH, exist_ok=True)

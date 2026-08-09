@@ -1228,7 +1228,7 @@ PostgreSQL is now **Running**. Let me verify the database is actually reachable 
 
 *User accepted the command `python -c "
 from sqlalchemy import create_engine, text
-engine = create_engine('postgresql://postgres:growtopia123@localhost:5432/db_dwh')
+engine = create_engine('postgresql://postgres:your_postgres_password@localhost:5432/db_dwh')
 with engine.connect() as conn:
     r = conn.execute(text('SELECT COUNT(*) FROM fact_flights'))
     print('fact_flights rows:', r.scalar())

@@ -1,9 +1,12 @@
 from amadeus import Client, ResponseError
 import json
 import os
+from dotenv import load_dotenv
 
-AMADEUS_KEY = ""
-AMADEUS_SECRET = ""
+load_dotenv()
+
+AMADEUS_KEY = os.getenv("AMADEUS_KEY", "your_amadeus_key_here")
+AMADEUS_SECRET = os.getenv("AMADEUS_SECRET", "your_amadeus_secret_here")
 
 BRONZE_PATH = os.path.join("data", "bronze")
 os.makedirs(BRONZE_PATH, exist_ok=True) 

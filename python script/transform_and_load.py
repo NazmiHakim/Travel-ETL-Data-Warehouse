@@ -2,14 +2,17 @@ import pandas as pd
 from sqlalchemy import create_engine, text
 import os
 import sys 
+from dotenv import load_dotenv
+
+load_dotenv()
 
 BASE_DATA_PATH = "data"
 
-DB_HOST = "localhost"
-DB_PORT = "5432"
-DB_NAME = "db_dwh"  
-DB_USER = "postgres"
-DB_PASS = "growtopia123"
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_NAME = os.getenv("DB_NAME", "db_dwh")  
+DB_USER = os.getenv("DB_USER", "postgres")
+DB_PASS = os.getenv("DB_PASS", "your_postgres_password")
 
 AIRPORTS_FILE = os.path.join(BASE_DATA_PATH, "airports.csv")
 FLIGHTS_FILE = os.path.join(BASE_DATA_PATH, "flights.csv")
