@@ -21,6 +21,7 @@ The project combines a robust Data Warehouse architecture (**Kimball Star Schema
 * **Route & Destination Rankings:** Identifies top-performing flight routes and origin/destination cities by passenger volume and total revenue.
 * **Carrier Performance & Operational Delay Analytics:** Aggregates real operational delay metrics (`avg_departure_delay`, `avg_arrival_delay`) and revenue performance across airlines.
 * **Seasonal Demand Trends:** Analyzes volume fluctuations across months, quarters, and days of the week.
+* **Power BI Dashboard Integration:** Includes interactive dashboard report (`Data Warehouse Visualization.pbix`) for executive reporting.
 
 ### 2. AI-Powered Analytics & Neuro-Symbolic Automation
 * **Unstructured Feedback Enrichment (AI ETL):** Uses LLM processing to transform raw customer review text into structured metrics (`sentiment`, `complaint_category`, `satisfaction_score`).
@@ -301,9 +302,6 @@ python test_whitebox_5k.py
 # Run 200,000-Query Ultra-Scale High-Throughput Stress Test (~10 minutes)
 python test_whitebox_100k.py
 ```
-
-
-Open your browser at `http://localhost:8501` to query your Data Warehouse in natural language!
 
 ---
 
