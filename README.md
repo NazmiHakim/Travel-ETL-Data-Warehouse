@@ -1,4 +1,4 @@
-# TravelNusantara: End-to-End Flight ETL & Local AI Data Analyst
+# TravelNusantara: End-to-End Flight ETL & Local AI Data Analyst Agent
 
 This repository implements a Data Warehouse and Local AI Analytics engine for **TravelNusantara**, a fictional Online Travel Agency (OTA).
 
