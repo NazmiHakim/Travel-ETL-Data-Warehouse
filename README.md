@@ -192,9 +192,9 @@ streamlit run app.py
 
 ---
 
-## Complete Zero-to-Hero Execution Tutorial
+## Guide
 
-Follow this step-by-step guide to run the entire system from absolute scratch on a fresh machine.
+Follow this step-by-step guide to run this project.
 
 ---
 
