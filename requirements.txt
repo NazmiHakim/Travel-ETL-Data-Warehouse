@@ -11,6 +11,9 @@ Faker>=24.0.0
 # AI enrichment & agent
 google-genai>=0.8.0
 scikit-learn>=1.4.0
+# Optional: install for dense semantic RAG embeddings (all-MiniLM-L6-v2)
+# Falls back to TF-IDF automatically if not installed.
+sentence-transformers>=3.0.0
 
 # Web UI & visualization
 streamlit>=1.35.0

@@ -1,0 +1,89 @@
+name: CI — Test Suite
+
+# Triggers on every push and pull request to main
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ============================================================
+  # Unit & Integration Tests
+  # ============================================================
+  test:
+    name: Run Test Suite
+    runs-on: ubuntu-latest
+
+    # Spin up a real PostgreSQL service container for integration tests
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: db_dwh
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      # 1. Checkout source code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Set up Python 3.11
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      # 3. Install all dependencies
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # 4. Write .env for the test run (DB_NAME=db_dwh, no Gemini key → Mode B only)
+      - name: Create test .env
+        run: |
+          cat << 'EOF' > .env
+          DB_HOST=localhost
+          DB_PORT=5432
+          DB_NAME=db_dwh
+          DB_USER=postgres
+          DB_PASS=postgres
+          GEMINI_API_KEY=
+          EOF
+
+      # 5. Initialize the DWH schema in the CI PostgreSQL service
+      - name: Initialize database schema
+        run: psql -h localhost -U postgres -d db_dwh -f setup_database.sql
+        env:
+          PGPASSWORD: postgres
+
+      # 6. Run tests with coverage
+      - name: Run pytest with coverage
+        run: |
+          pytest test_routing.py test_rag_schema.py test_whitebox_5k.py \
+            --tb=short -q \
+            --cov=agent \
+            --cov-report=term-missing \
+            --cov-report=xml
+        env:
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: db_dwh
+          DB_USER: postgres
+          DB_PASS: postgres
+
+      # 7. Upload coverage report as artifact
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage.xml

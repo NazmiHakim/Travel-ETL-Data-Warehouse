@@ -1,10 +1,45 @@
 # TravelNusantara: End-to-End Flight ETL & Local AI Data Analyst Agent
 
+[![CI](https://github.com/NazmiHakim/Travel-ETL-Data-Warehouse/actions/workflows/ci.yml/badge.svg)](https://github.com/NazmiHakim/Travel-ETL-Data-Warehouse/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+
 This repository implements a Data Warehouse and Local AI Analytics engine for **TravelNusantara**, a fictional Online Travel Agency (OTA).
 
 The system combines a Kimball Star Schema data warehouse (Medallion Architecture) with a hybrid local/offline AI agent:
 1. **Silver Layer AI ETL Enrichment:** `ai_enrich_reviews.py` extracts sentiment scores and complaint categories from raw customer text reviews.
 2. **Local AI Data Analyst Agent:** An interactive Text-to-SQL engine uses Vector-RAG domain scoring, live schema introspection, local query routing (~700+ QPS), and an automated self-correction reflection loop.
+
+---
+
+## Quick Start
+
+### Option A: Docker (Recommended — one command)
+```bash
+cp .env.example .env   # fill in your Gemini API key (optional)
+docker-compose up --build
+# → Opens at http://localhost:8501
+```
+
+### Option B: Local Python
+```bash
+pip install -r requirements.txt
+cp .env.example .env   # configure DB credentials
+python run_pipeline.py # runs all 5 ETL steps in order
+streamlit run app.py
+```
+
+---
+
+## Benchmark Results
+
+| Test Suite | Cases | Pass Rate | Throughput |
+|---|---|---|---|
+| SQL Assertion (happy path) | 5,000 | 100% | — |
+| Adversarial / Security | 5,000 | 100% block rate | — |
+| Mode B Live QPS Stress Test | 200,000 queries | 100% | **316 QPS** |
+| Intent Router Unit Tests | 16 cases | 100% | — |
 
 ---
 

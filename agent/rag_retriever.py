@@ -1,7 +1,23 @@
 import re
+import logging
 from typing import List, Dict, Any
+import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
+
+# ---------------------------------------------------------------------------
+# Optional: sentence-transformers for dense semantic embeddings.
+# Falls back gracefully to TF-IDF if the library is not installed.
+# Install: pip install sentence-transformers
+# ---------------------------------------------------------------------------
+try:
+    from sentence_transformers import SentenceTransformer
+    _SENTENCE_TRANSFORMERS_AVAILABLE = True
+except ImportError:
+    _SENTENCE_TRANSFORMERS_AVAILABLE = False
+    logging.getLogger(__name__).debug(
+        "sentence-transformers not installed — using TF-IDF retrieval (run: pip install sentence-transformers)"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -130,15 +146,45 @@ DATA_DICTIONARY: List[Dict[str, Any]] = [
 
 class DataDictionaryVectorRAG:
     """
-    Lightweight, sub-millisecond TF-IDF Vector Space RAG Retriever
-    for the TravelNusantara Data Dictionary & Domain Metadata.
+    Hybrid Vector RAG Retriever for the TravelNusantara Data Dictionary.
+
+    Retrieval Strategy (automatic selection):
+    - **Dense Embeddings (preferred):** Uses `sentence-transformers/all-MiniLM-L6-v2`
+      when the `sentence-transformers` package is installed. This model handles
+      paraphrased queries (e.g., 'earnings' vs 'revenue', 'lateness' vs 'delay')
+      that keyword-based methods miss.
+    - **Sparse TF-IDF (fallback):** Used automatically if `sentence-transformers`
+      is not installed. Fast, zero-dependency, and sufficient for direct keyword matches.
+
+    Both strategies expose identical retrieve() / get_domain_scores() interfaces.
     """
 
     def __init__(self, dictionary_docs: List[Dict[str, Any]] = DATA_DICTIONARY):
         self.docs = dictionary_docs
         self.corpus = [doc["content"] for doc in self.docs]
-        self.vectorizer = TfidfVectorizer(stop_words="english")
-        self.doc_vectors = self.vectorizer.fit_transform(self.corpus)
+
+        # --- Dense embedding path (sentence-transformers) ---
+        self._use_dense = False
+        if _SENTENCE_TRANSFORMERS_AVAILABLE:
+            try:
+                self._encoder = SentenceTransformer("all-MiniLM-L6-v2")
+                # Encode all corpus documents once at init time
+                self._doc_embeddings = self._encoder.encode(
+                    self.corpus, convert_to_numpy=True, show_progress_bar=False
+                )
+                self._use_dense = True
+                logging.getLogger(__name__).debug(
+                    "DataDictionaryVectorRAG: using dense embeddings (all-MiniLM-L6-v2)"
+                )
+            except Exception as e:
+                logging.getLogger(__name__).warning(
+                    f"sentence-transformers init failed ({e}). Falling back to TF-IDF."
+                )
+
+        # --- Sparse TF-IDF path (fallback) ---
+        if not self._use_dense:
+            self.vectorizer = TfidfVectorizer(stop_words="english")
+            self.doc_vectors = self.vectorizer.fit_transform(self.corpus)
 
         # Build alias map for entity resolution (e.g. JFK -> New York, AA -> American Airlines)
         self.alias_map = {}
@@ -146,24 +192,54 @@ class DataDictionaryVectorRAG:
             for alias, target in doc.get("aliases", {}).items():
                 self.alias_map[alias.lower()] = target
 
+    def _compute_similarities(self, query: str) -> np.ndarray:
+        """
+        Computes cosine similarity scores between the query and all corpus documents.
+        Uses dense embeddings if available, otherwise falls back to TF-IDF.
+
+        Args:
+            query: The user's natural language query.
+
+        Returns:
+            A 1D numpy array of similarity scores, one per corpus document.
+        """
+        if self._use_dense:
+            query_embedding = self._encoder.encode([query], convert_to_numpy=True, show_progress_bar=False)
+            # cosine_similarity returns shape (1, n_docs) — flatten to 1D
+            return cosine_similarity(query_embedding, self._doc_embeddings).flatten()
+        else:
+            query_vec = self.vectorizer.transform([query])
+            return cosine_similarity(query_vec, self.doc_vectors).flatten()
+
     def retrieve(self, query: str, top_k: int = 2) -> List[Dict[str, Any]]:
         """
-        Retrieves top_k most semantically relevant data dictionary chunks
-        for a given user query using TF-IDF Vector Cosine Similarity.
+        Retrieves the top_k most semantically relevant data dictionary chunks
+        for a given user query.
+
+        Uses dense embeddings (sentence-transformers) when available for
+        paraphrase-robust retrieval; falls back to TF-IDF otherwise.
+
+        Args:
+            query: The user's natural language query.
+            top_k: Maximum number of chunks to return.
+
+        Returns:
+            List of matching data dictionary dicts, each augmented with
+            a 'similarity_score' key. Returns [] for empty queries.
         """
         if not query or not query.strip():
             return []
 
-        query_vec = self.vectorizer.transform([query])
-        similarities = cosine_similarity(query_vec, self.doc_vectors).flatten()
-
-        # Rank indices by score descending
+        similarities = self._compute_similarities(query)
         ranked_indices = similarities.argsort()[::-1]
+
+        # Relevance threshold: 0.05 for TF-IDF, 0.15 for dense (different score scales)
+        threshold = 0.15 if self._use_dense else 0.05
 
         results = []
         for idx in ranked_indices[:top_k]:
             score = float(similarities[idx])
-            if score > 0.05:  # Relevance threshold
+            if score > threshold:
                 doc = self.docs[idx].copy()
                 doc["similarity_score"] = round(score, 4)
                 results.append(doc)
@@ -171,13 +247,21 @@ class DataDictionaryVectorRAG:
 
     def get_domain_scores(self, query: str) -> Dict[str, float]:
         """
-        Calculates TF-IDF Cosine Similarity scores for each domain knowledge chunk.
-        Returns a dictionary mapping document IDs (e.g. 'customer_feedback') to similarity floats.
+        Returns a dictionary mapping each document ID (e.g., 'customer_feedback')
+        to its cosine similarity score for the given query.
+
+        Used by generate_dynamic_sql() to select the correct SQL template
+        based on domain relevance (e.g., feedback_score >= 0.12).
+
+        Args:
+            query: The user's natural language query.
+
+        Returns:
+            Dict of {doc_id: similarity_score}. Empty dict for empty query.
         """
         if not query or not query.strip():
             return {}
-        query_vec = self.vectorizer.transform([query])
-        similarities = cosine_similarity(query_vec, self.doc_vectors).flatten()
+        similarities = self._compute_similarities(query)
         return {self.docs[i]["id"]: round(float(similarities[i]), 4) for i in range(len(self.docs))}
 
 
