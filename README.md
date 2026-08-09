@@ -38,7 +38,7 @@ streamlit run app.py
 |---|---|---|---|
 | SQL Assertion (happy path) | 5,000 | 100% | — |
 | Adversarial / Security | 5,000 | 100% block rate | — |
-| Mode B Live QPS Stress Test | 200,000 queries | 100% | **316 QPS** |
+| Mode A Live QPS Stress Test | 200,000 queries | 100% | **316 QPS** |
 | Intent Router Unit Tests | 16 cases | 100% | — |
 
 ---
@@ -60,8 +60,8 @@ streamlit run app.py
 ### 2. Local/Offline Agent Automation
 * **Unstructured Text Enrichment:** `ai_enrich_reviews.py` converts raw customer reviews into structured sentiment labels, complaint categories, and satisfaction scores (1–5). The Gemini API key is validated once at startup; if absent or invalid, the script runs a rule-based NLP enrichment pipeline across all 2,000 records without any retries or network calls.
 * **Dual-Mode Text-to-SQL Processing:**
-  * **Mode A (Gemini LLM):** The agent calls the Google Gemini 2.5 Flash API when a valid `GEMINI_API_KEY` is configured in `.env`. The log accurately reports which mode was used based on whether the API call actually succeeded, not merely whether a key string is present.
-  * **Mode B (Local Deterministic Engine):** The agent uses its local NLP pattern engine when no API key is present or when the API call fails, generating SQL via keyword matching and TF-IDF domain scoring with zero external latency.
+  * **Mode A (Local Deterministic Engine):** The agent's primary and default mode. Uses the local NLP pattern engine with TF-IDF cosine-similarity RAG, 7-domain keyword routing, and pre-validated SQL templates — operating fully offline, at millisecond latency, with zero API cost and 100% deterministic, auditable output.
+  * **Mode B (Gemini LLM):** Optional enhanced mode. The agent calls the Google Gemini 2.5 Flash API when a valid `GEMINI_API_KEY` is configured in `.env`, enabling flexible handling of complex or ambiguous queries beyond the deterministic engine's domain coverage. The log accurately reports which mode was used based on whether the API call actually succeeded.
 * **Composite Airline Performance Ranking:** The agent routes performance/ranking/comparison queries to `v_airline_performance`, a PostgreSQL VIEW that computes a weighted performance score per airline: **40% On-Time Performance (OTP) + 30% Revenue Efficiency + 30% Customer Satisfaction**. Queries like *"rank all airlines from best to worst"* route to this VIEW directly, returning all 8 carriers ranked by composite score.
 * **Full-Dataset Queries:** Prompts containing *"all"*, *"every"*, or *"entire"* suppress the default `LIMIT` cap and return up to 50 results, enabling complete airline rankings without truncation.
 * **Vector RAG Domain Scoring:** The RAG retriever computes TF-IDF cosine similarity scores between user queries and domain knowledge chunks — including the new `v_airline_performance` knowledge entry — to route queries to the correct schema target.
@@ -208,9 +208,9 @@ streamlit run app.py
 
 ---
 
-### Deep-Dive: Mode B (Local Deterministic Engine)
+### Deep-Dive: Mode A (Local Deterministic Engine)
 
-Mode B activates when no `GEMINI_API_KEY` is set in `.env`, or when the Gemini API call fails. The engine processes natural language prompts entirely on local CPU resources with no external network calls.
+Mode A is the agent's primary and default mode — it activates whenever no `GEMINI_API_KEY` is set in `.env`, or when the Gemini API call fails. The engine processes natural language prompts entirely on local CPU resources with no external network calls, zero cost, and 100% deterministic output.
 
 #### Component Breakdown
 
@@ -226,7 +226,7 @@ Mode B activates when no `GEMINI_API_KEY` is set in `.env`, or when the Gemini A
 * **Reflection & Self-Correction Loop (`agent/sql_agent.py` — `process_query`)**
   The main agent loop executes the generated SQL against `db_dwh` via `agent/db_tools.py` in a read-only sandbox. If PostgreSQL returns an error, the loop appends the full error trace and the failed SQL back into the prompt and calls `call_llm` again — up to `max_retries=3` cycles. Connection errors (`OperationalError`) abort the loop immediately, as SQL changes cannot fix connectivity failures.
 
-#### Mode B Step-by-Step Workflow
+#### Mode A Step-by-Step Workflow
 
 1. **Guard Check:** The agent verifies the prompt contains at least one analytical keyword from `ALL_ANALYTICAL` (which now includes `PERFORMANCE_KEYWORDS`); non-analytical inputs receive a help response immediately.
 2. **Cache Lookup:** The agent checks a session-level SHA-256 keyed dictionary to return cached results for repeated identical questions without a DB round-trip.
@@ -277,7 +277,7 @@ DB_NAME=db_dwh
 DB_USER=postgres
 DB_PASS=your_postgres_password
 
-# Optional — agent runs fully offline (Mode B) if omitted
+# Optional — agent runs fully offline in Mode A if omitted
 GEMINI_API_KEY=your_gemini_api_key_here
 
 # Optional — only needed for extract_api.py
@@ -359,7 +359,7 @@ The app opens at `http://localhost:8501`. Example questions to test:
 │   ├── db_tools.py                    # SQLAlchemy engine & execute_sql
 │   ├── schema_inspector.py            # Live PostgreSQL schema introspection
 │   ├── rag_retriever.py               # TF-IDF Vector RAG engine
-│   └── sql_agent.py                   # TextToSQLAgent (Mode A + Mode B + Reflection)
+│   └── sql_agent.py                   # TextToSQLAgent (Mode A: Local + Mode B: Gemini + Reflection)
 ├── data/
 │   ├── airports.csv                   # Airport reference data
 │   ├── flights.csv                    # Operational flight data

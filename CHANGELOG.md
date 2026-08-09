@@ -24,7 +24,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - All pipeline functions documented with comprehensive docstrings.
 - `test_routing.py` and `test_rag_schema.py` refactored from print-based runners to proper `pytest` parametrized test cases.
 - `app.py`: replaced hardcoded Windows service name (`postgresql-x64-18`) with a dynamic, OS-neutral DB connection message.
-- `README.md`: corrected hallucinated claims (Mode A/B routing trigger, schema column names, architecture diagram, file list).
+- `README.md`: corrected hallucinated claims (Mode A local engine / Mode B Gemini routing trigger, schema column names, architecture diagram, file list).
 
 ### Fixed
 - Star schema diagram corrected — `Fact_Flights.departure_delay` / `arrival_delay` names now match `setup_database.sql`.
@@ -39,7 +39,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `.env` and `.env.example` for environment-based credential management (`python-dotenv`).
 - `.gitignore` protection for all `.env` files.
 - `MASTER_PROJECT_DOCUMENTATION.md` — phase-by-phase technical documentation.
-- Mode B deep-dive explanation added to `README.md`.
+- Mode A (local engine) deep-dive explanation added to `README.md`.
 
 ### Changed
 - All 5 Python scripts migrated from hardcoded credentials to `os.getenv()` lookups.
@@ -51,7 +51,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [0.2.0] — 2026-08: AI Agent Integration
 
 ### Added
-- `agent/sql_agent.py` — `TextToSQLAgent` with dual-mode routing (Mode A: Gemini LLM, Mode B: local deterministic engine).
+- `agent/sql_agent.py` — `TextToSQLAgent` with dual-mode routing (Mode A: local deterministic engine, Mode B: Gemini LLM optional upgrade).
 - `agent/rag_retriever.py` — TF-IDF Vector RAG engine with entity normalization and domain scoring.
 - `agent/schema_inspector.py` — live PostgreSQL `information_schema` introspection.
 - `agent/db_tools.py` — SQLAlchemy singleton engine, read-only sandbox, security guards.

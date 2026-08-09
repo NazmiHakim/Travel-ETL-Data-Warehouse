@@ -15,7 +15,7 @@
    - 2.1 The Dual-Agent Architectural Paradigm
    - 2.2 Module 1: Unstructured AI ETL Enrichment (`ai_enrich_reviews.py`)
    - 2.3 Module 2: Neuro-Symbolic Data Analyst Agent
-   - 2.4 Mode A (Neural Gemini Reasoning) vs. Mode B (Deterministic Local Engine)
+   - 2.4 Mode A (Deterministic Local Engine) vs. Mode B (Neural Gemini Reasoning)
    - 2.5 Vector RAG Domain Scoring & TF-IDF Similarity Math
    - 2.6 Live Database Schema Introspection (`schema_inspector.py`)
    - 2.7 Reflection & Self-Correction Loop
@@ -124,8 +124,8 @@ The system implements a dual AI architecture separating **ETL Pipeline Ingestion
 The analytical engine (`agent/sql_agent.py`) converts user prompts into executable PostgreSQL SQL. It combines deterministic pattern matching with vector math grounding to guarantee sub-millisecond execution.
 
 ### 2.4 Mode A vs. Mode B Reasoning
-* **Mode A (Neural LLM Reasoning)**: Uses Google Gemini API (`google-genai` SDK) to handle complex, ambiguous, or multi-nested user queries.
-* **Mode B (Deterministic Local Python Engine)**: Operates locally using regex pattern rules, dynamic schema inspection, and TF-IDF Cosine Similarity. Mode B processes queries at **~700+ QPS** with zero API latency and zero cost.
+* **Mode A (Deterministic Local Python Engine)**: The primary and default mode. Operates locally using regex pattern rules, dynamic schema inspection, and TF-IDF Cosine Similarity RAG. Mode A processes queries at **~700+ QPS** with zero API latency, zero cost, and 100% deterministic, auditable output.
+* **Mode B (Neural LLM Reasoning)**: Optional enhanced mode. Uses Google Gemini API (`google-genai` SDK) to handle complex, ambiguous, or multi-nested user queries when a `GEMINI_API_KEY` is provided.
 
 ### 2.5 Vector RAG Domain Scoring & TF-IDF Similarity Math
 To eliminate brittle keyword dependencies, `agent/rag_retriever.py` implements `DataDictionaryVectorRAG`. It vectorizes incoming user prompts using TF-IDF and computes Cosine Similarity against domain knowledge vectors:
