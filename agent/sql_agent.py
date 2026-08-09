@@ -381,9 +381,11 @@ def generate_dynamic_sql(user_question: str) -> str:
         )
 
 
-def call_llm(full_prompt: str, user_question: str, api_key: str = None) -> str:
+def call_llm(full_prompt: str, user_question: str, api_key: str = None) -> tuple[str, bool]:
     """
-    Calls Gemini API when a key is available.
+    Calls Gemini API when a key is available and the call succeeds.
+    Returns (response_text, used_api) where used_api=True only when the
+    Gemini API call actually succeeds -- not just when a key string exists.
     Fallback: generate_dynamic_sql(user_question) -- NOT the full prompt.
     """
     key = api_key or os.getenv("GEMINI_API_KEY")
@@ -395,10 +397,10 @@ def call_llm(full_prompt: str, user_question: str, api_key: str = None) -> str:
                 model="gemini-2.5-flash",
                 contents=full_prompt,
             )
-            return response.text
+            return response.text, True   # API succeeded
         except Exception as e:
             print(f"Gemini API Error: {e}. Falling back to NLP engine.")
-    return f"```sql\n{generate_dynamic_sql(user_question)}\n```"
+    return f"```sql\n{generate_dynamic_sql(user_question)}\n```", False
 
 
 def extract_sql_code(text: str) -> str:
@@ -467,12 +469,12 @@ class TextToSQLAgent:
                 "sql_query": "",
                 "data": None,
                 "summary": (
-                    "ðŸ‘‹ Hi! I'm TravelNusantara's AI Data Analyst.\n\n"
+                    "Hi! I'm TravelNusantara's AI Data Analyst.\n\n"
                     "I can answer questions about:\n"
-                    "- âœˆï¸ **Flight revenue & passengers** by airline\n"
-                    "- â±ï¸ **Departure & arrival delays** by airline or route\n"
-                    "- ðŸ“ **Top destination & origin cities**\n"
-                    "- ðŸ’¬ **Customer sentiment & complaint categories**\n\n"
+                    "-  **Flight revenue & passengers** by airline\n"
+                    "-  **Departure & arrival delays** by airline or route\n"
+                    "-  **Top destination & origin cities**\n"
+                    "- **Customer sentiment & complaint categories**\n\n"
                     "Try: *\"Which airline has the highest revenue?\"* "
                     "or *\"Show top 5 destination cities.\"*"
                 ),
@@ -485,14 +487,12 @@ class TextToSQLAgent:
         ck = _cache_key(user_question)
         if use_cache and ck in _query_cache:
             cached = _query_cache[ck].copy()
-            cached["logs"] = [f"âš¡ Cache hit -- returning stored result for: '{user_question}'"]
+            cached["logs"] = [f"Cache hit -- returning stored result for: '{user_question}'"]
             cached["from_cache"] = True
             return cached
 
         if effective_key:
-            logs.append("ðŸ”‘ Using Gemini LLM API (gemini-2.5-flash).")
-        else:
-            logs.append("âš¡ Using Dynamic NLP Pattern Engine.")
+            logs.append("Attempting Gemini LLM API (gemini-2.5-flash)...")
 
         system_instruction = f"""You are an expert PostgreSQL Data Analyst for TravelNusantara.
 Translate the user's question into a valid PostgreSQL query for database 'db_dwh'.
@@ -520,9 +520,14 @@ RULES:
         for attempt in range(1, max_retries + 1):
             logs.append(f"--- Attempt {attempt}/{max_retries} ---")
 
-            llm_response = call_llm(
+            llm_response, used_api = call_llm(
                 current_prompt, user_question=user_question, api_key=api_key
             )
+            if attempt == 1:
+                if used_api:
+                    logs.append("Using Gemini LLM API (gemini-2.5-flash).")
+                else:
+                    logs.append("Using Dynamic NLP Pattern Engine.")
             sql_query = extract_sql_code(llm_response)
             logs.append(f"Generated SQL: `{sql_query}`")
 
@@ -533,10 +538,10 @@ RULES:
             if success:
                 result_df = result_df_or_err
                 logs.append(
-                    f"âœ… SUCCESS -- {len(result_df)} row(s) in {elapsed:.3f}s."
+                    f"SUCCESS -- {len(result_df)} row(s) in {elapsed:.3f}s."
                 )
                 if len(result_df) == 0 and attempt < max_retries:
-                    logs.append("âš ï¸ 0 rows -- relaxing filter conditions...")
+                    logs.append("0 rows -- relaxing filter conditions...")
                     current_prompt += (
                         f"\n\nAttempt {attempt}: 0 rows for:\n{sql_query}\n"
                         "Relax any date/filter conditions and regenerate."
@@ -547,10 +552,10 @@ RULES:
                 error_msg = str(result_df_or_err)
                 # Break immediately for connectivity errors -- SQL changes cannot fix these
                 if any(k in error_msg for k in ["Connection Refused", "not reachable", "OperationalError"]):
-                    logs.append(f"ðŸ”´ DB CONNECTION ERROR -- aborting retries.")
+                    logs.append(f"DB CONNECTION ERROR -- aborting retries.")
                     break
-                logs.append(f"âŒ Error: {error_msg}")
-                logs.append("ðŸ” Triggering Reflection & Correction Loop...")
+                logs.append(f"Error: {error_msg}")
+                logs.append("Triggering Reflection & Correction Loop...")
                 current_prompt += (
                     f"\n\nAttempt {attempt} failed:\n{error_msg}\n"
                     f"Query was:\n{sql_query}\n"

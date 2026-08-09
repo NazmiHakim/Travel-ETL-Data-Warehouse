@@ -58,11 +58,13 @@ streamlit run app.py
 * **Executive Dashboards:** The repository includes a Power BI file (`Data Warehouse Visualization.pbix`) for visual data exploration.
 
 ### 2. Local/Offline Agent Automation
-* **Unstructured Text Enrichment:** The AI enrichment script converts raw customer reviews into structured metrics (`sentiment`, `complaint_category`, `satisfaction_score`).
+* **Unstructured Text Enrichment:** `ai_enrich_reviews.py` converts raw customer reviews into structured sentiment labels, complaint categories, and satisfaction scores (1–5). The Gemini API key is validated once at startup; if absent or invalid, the script runs a rule-based NLP enrichment pipeline across all 2,000 records without any retries or network calls.
 * **Dual-Mode Text-to-SQL Processing:**
-  * **Mode A (Gemini LLM):** The agent calls the Google Gemini 2.5 Flash API when a valid `GEMINI_API_KEY` is configured in `.env`.
-  * **Mode B (Local Deterministic Engine):** The agent uses its local NLP pattern engine when no API key is present, generating SQL via keyword matching and TF-IDF domain scoring with zero external latency.
-* **Vector RAG Domain Scoring:** The RAG retriever computes TF-IDF cosine similarity scores between user queries and domain knowledge chunks to route queries to the correct table (`fact_flights`, `fact_customer_feedback`, `dim_airline`, `dim_airport`).
+  * **Mode A (Gemini LLM):** The agent calls the Google Gemini 2.5 Flash API when a valid `GEMINI_API_KEY` is configured in `.env`. The log accurately reports which mode was used based on whether the API call actually succeeded, not merely whether a key string is present.
+  * **Mode B (Local Deterministic Engine):** The agent uses its local NLP pattern engine when no API key is present or when the API call fails, generating SQL via keyword matching and TF-IDF domain scoring with zero external latency.
+* **Composite Airline Performance Ranking:** The agent routes performance/ranking/comparison queries to `v_airline_performance`, a PostgreSQL VIEW that computes a weighted performance score per airline: **40% On-Time Performance (OTP) + 30% Revenue Efficiency + 30% Customer Satisfaction**. Queries like *"rank all airlines from best to worst"* route to this VIEW directly, returning all 8 carriers ranked by composite score.
+* **Full-Dataset Queries:** Prompts containing *"all"*, *"every"*, or *"entire"* suppress the default `LIMIT` cap and return up to 50 results, enabling complete airline rankings without truncation.
+* **Vector RAG Domain Scoring:** The RAG retriever computes TF-IDF cosine similarity scores between user queries and domain knowledge chunks — including the new `v_airline_performance` knowledge entry — to route queries to the correct schema target.
 * **Self-Correction Reflection Loop:** The agent intercepts PostgreSQL execution errors and feeds the error trace back into the prompt for automated retries (up to 3 cycles).
 
 ---
@@ -94,6 +96,7 @@ streamlit run app.py
 |     - Dim_Airport, Dim_Airline, Dim_Date                                          |
 |     - Fact_Flights (Operational Delays + Revenue Aggregations)                    |
 |     - Fact_Customer_Feedback (AI-Enriched Sentiment & Complaint Categories)       |
+|     - v_airline_performance VIEW (Composite Score: OTP + Revenue + Satisfaction)  |
 +-----------------------------------------------------------------------------------+
                                          |
                                          +----------------------------------+
@@ -146,7 +149,7 @@ streamlit run app.py
 ```
 
 > [!NOTE]
-> Column names match `setup_database.sql` exactly. `Fact_Flights` stores raw `departure_delay` and `arrival_delay` integers; averages are computed at query time using `AVG()`.
+> Column names match `setup_database.sql` exactly. `Fact_Flights` stores raw `departure_delay` and `arrival_delay` integers; averages are computed at query time using `AVG()`. The `v_airline_performance` VIEW materializes a composite performance score on every query, joining `Fact_Flights` and `Fact_Customer_Feedback`; no additional ETL step is required after running `setup_database.sql`.
 
 ---
 
@@ -212,26 +215,27 @@ Mode B activates when no `GEMINI_API_KEY` is set in `.env`, or when the Gemini A
 #### Component Breakdown
 
 * **Vector RAG Retriever (`agent/rag_retriever.py`)**
-  The RAG retriever builds a TF-IDF vector matrix from a curated data dictionary containing domain knowledge for `Dim_Airline`, `Dim_Airport`, `Fact_Flights`, and `Fact_Customer_Feedback`. The retriever computes cosine similarity scores between the user query and each domain chunk to identify which table should anchor the SQL query. The relevance threshold for returning a context chunk is 0.05. Domain-routing thresholds (e.g., `feedback_score >= 0.12`, `delay_score >= 0.15`) are applied *inside* `generate_dynamic_sql` to select the correct query template.
+  The RAG retriever builds a TF-IDF vector matrix from a curated data dictionary containing domain knowledge for `Dim_Airline`, `Dim_Airport`, `Fact_Flights`, `Fact_Customer_Feedback`, and the `v_airline_performance` composite performance VIEW. The retriever computes cosine similarity scores between the user query and each domain chunk to identify which table should anchor the SQL query. The relevance threshold for returning a context chunk is 0.05. Domain-routing thresholds (e.g., `feedback_score >= 0.12`, `delay_score >= 0.15`) are applied *inside* `generate_dynamic_sql` to select the correct query template.
 
 * **Entity Normalizer (`agent/rag_retriever.py` — `normalize_entities`)**
   The entity normalizer scans the raw user prompt for IATA airport codes (e.g., `ATL`, `JFK`) and airline carrier codes (e.g., `AA`, `DL`) and replaces them with their full city or airline names before SQL generation. This prevents unresolvable token mismatches against dimension table string values.
 
 * **Deterministic SQL Generator (`agent/sql_agent.py` — `generate_dynamic_sql`)**
-  The local SQL generator applies regex-based intent parsing across six keyword dictionaries (`REVENUE_KEYWORDS`, `DELAY_KEYWORDS`, `REVIEW_KEYWORDS`, `LOCATION_KEYWORDS`, `PASSENGER_KEYWORDS`, `TIME_KEYWORDS`) to determine sort direction, `LIMIT` clause, year filter, and target domain. The generator then constructs a raw SQL `SELECT` string using f-string templates with multi-table `JOIN`, `GROUP BY`, `ORDER BY`, and optional `WHERE` year conditions. No external API is called.
+  The local SQL generator applies regex-based intent parsing across seven keyword dictionaries (`REVENUE_KEYWORDS`, `DELAY_KEYWORDS`, `REVIEW_KEYWORDS`, `LOCATION_KEYWORDS`, `PASSENGER_KEYWORDS`, `TIME_KEYWORDS`, `PERFORMANCE_KEYWORDS`) to determine sort direction, `LIMIT` clause, year filter, and target domain. A dedicated **Domain 0 (Performance)** routing rule intercepts queries containing performance/ranking/comparison keywords before any other domain is evaluated, directing them to the `v_airline_performance` VIEW. Prompts containing *"all"* or *"every"* suppress the default `LIMIT 10` cap and return up to 50 records, enabling complete airline rankings. The generator then constructs a raw SQL `SELECT` string using f-string templates with multi-table `JOIN`, `GROUP BY`, `ORDER BY`, and optional `WHERE` year conditions. No external API is called.
 
 * **Reflection & Self-Correction Loop (`agent/sql_agent.py` — `process_query`)**
   The main agent loop executes the generated SQL against `db_dwh` via `agent/db_tools.py` in a read-only sandbox. If PostgreSQL returns an error, the loop appends the full error trace and the failed SQL back into the prompt and calls `call_llm` again — up to `max_retries=3` cycles. Connection errors (`OperationalError`) abort the loop immediately, as SQL changes cannot fix connectivity failures.
 
 #### Mode B Step-by-Step Workflow
 
-1. **Guard Check:** The agent verifies the prompt contains at least one analytical keyword from `ALL_ANALYTICAL`; non-analytical inputs receive a help response immediately.
+1. **Guard Check:** The agent verifies the prompt contains at least one analytical keyword from `ALL_ANALYTICAL` (which now includes `PERFORMANCE_KEYWORDS`); non-analytical inputs receive a help response immediately.
 2. **Cache Lookup:** The agent checks a session-level SHA-256 keyed dictionary to return cached results for repeated identical questions without a DB round-trip.
-3. **RAG Context Grounding:** The RAG retriever fetches the top 2 most relevant data dictionary chunks and entity normalizations.
-4. **SQL Generation:** `generate_dynamic_sql` builds a complete SQL query string based on keyword domain scores and parsed intent tokens.
-5. **DB Execution:** `execute_sql` runs the query against `db_dwh` and returns `(success: bool, DataFrame | error_msg, elapsed_seconds)`.
-6. **Reflection Loop:** On failure, the error message is appended to the prompt and a corrected SQL is generated; this repeats up to 3 times.
-7. **Output Rendering:** The Streamlit app renders the result `DataFrame` as interactive Plotly charts and a natural-language markdown summary.
+3. **RAG Context Grounding:** The RAG retriever fetches the top 2 most relevant data dictionary chunks — including the `v_airline_performance` knowledge entry for performance/ranking queries — and entity normalizations.
+4. **Domain 0 Routing (Performance):** If `PERFORMANCE_KEYWORDS` are detected alongside airline references, the agent queries `v_airline_performance` directly before evaluating any other domain.
+5. **SQL Generation:** `generate_dynamic_sql` builds a complete SQL query string based on keyword domain scores and parsed intent tokens. `LIMIT` is suppressed to 50 when the user requests *"all"* results.
+6. **DB Execution:** `execute_sql` runs the query against `db_dwh` and returns `(success: bool, DataFrame | error_msg, elapsed_seconds)`.
+7. **Reflection Loop:** On failure, the error message is appended to the prompt and a corrected SQL is generated; this repeats up to 3 times.
+8. **Output Rendering:** The Streamlit app renders the result `DataFrame` as interactive Plotly charts and a natural-language markdown summary.
 
 ---
 
@@ -307,7 +311,7 @@ Run the scripts in order:
 # 1. Generate synthetic airports/flights/reviews CSV files
 python "python script/generate_source_data.py"
 
-# 2. Populate the OLTP database with 5,000 booking records
+# 2. Populate the OLTP database with 50,000 booking records across all 8 airlines
 python "python script/generate_dummy_oltp.py"
 
 # 3. Extract OLTP bookings to Bronze layer CSV
@@ -333,6 +337,7 @@ The app opens at `http://localhost:8501`. Example questions to test:
 - *"Show the top 5 destination cities by passenger volume."*
 - *"Which airline has the most negative reviews?"*
 - *"What are the average departure delays per airline?"*
+- *"Show me all airlines ranked by performance from best to worst."*
 
 ---
 
